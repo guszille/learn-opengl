@@ -152,6 +152,9 @@
     <ClCompile Include="core\ShaderProgram.cpp" />
     <ClCompile Include="core\VertexArray.cpp" />
     <ClCompile Include="core\VertexBuffer.cpp" />
+    <ClCompile Include="util\Camera.cpp" />
+    <ClCompile Include="util\Object.cpp" />
+    <ClCompile Include="util\Texture.cpp" />
     <ClCompile Include="vendor\libs\glad\glad.c" />
   </ItemGroup>
   <ItemGroup>
@@ -159,10 +162,13 @@
     <ClInclude Include="core\ShaderProgram.h" />
     <ClInclude Include="core\VertexArray.h" />
     <ClInclude Include="core\VertexBuffer.h" />
+    <ClInclude Include="util\Camera.h" />
+    <ClInclude Include="util\Object.h" />
+    <ClInclude Include="util\Texture.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="scripts\basic_fs.glsl" />
-    <None Include="scripts\basic_vs.glsl" />
+    <None Include="scripts\basic_texturing_fs.glsl" />
+    <None Include="scripts\basic_texturing_vs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

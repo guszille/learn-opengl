@@ -1,70 +1,183 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include <iostream>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "core/VertexArray.h"
 #include "core/VertexBuffer.h"
 #include "core/ElementBuffer.h"
 #include "core/ShaderProgram.h"
 
+#include "util/Texture.h"
+#include "util/Camera.h"
+
 // Global window properties.
-const int g_WindowWidth  = 800;
-const int g_WindowHeight = 600;
+int   g_WindowWidth       = 1280;
+int   g_WindowHeight      = 720;
+bool  g_CursorAttached    = false;
+float g_WindowAspectRatio = (float)g_WindowWidth / (float)g_WindowHeight;
+float g_CursorPosX        = (float)g_WindowWidth / 2.0f;
+float g_CursorPosY        = (float)g_WindowHeight / 2.0f;
+float g_FieldOfView       = 45.0f;
 
 // GLFW window callbacks.
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 
 // Global variables.
-VertexArray*   g_RectangleVAO;
-VertexBuffer*  g_RectangleVBO;
-ElementBuffer* g_RectangleEBO;
-ShaderProgram* g_BasicSP;
+float g_DeltaTime = 0.0f;
+float g_LastFrame = 0.0f;
 
-int g_DrawMode = GL_FILL;
+int g_CursorMode = GLFW_CURSOR_DISABLED;
+int g_DrawMode   = GL_FILL;
+
+glm::mat4 g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
+
+ShaderProgram* g_BasicSP;
+VertexArray*   g_CubeVAO;
+VertexBuffer*  g_CubeVBO;
+ElementBuffer* g_CubeEBO;
+
+Camera*  g_MainCamera;
+Texture* g_Texture0;
+Texture* g_Texture1;
+
+glm::vec3 g_CubePositions[] = {
+    glm::vec3( 0.0f,  0.0f,   0.0f),
+    glm::vec3( 2.0f,  5.0f, -15.0f),
+    glm::vec3(-1.5f, -2.2f, - 2.5f),
+    glm::vec3(-3.8f, -2.0f, -12.3f),
+    glm::vec3( 2.4f, -0.4f, - 3.5f),
+    glm::vec3(-1.7f,  3.0f, - 7.5f),
+    glm::vec3( 1.3f, -2.0f, - 2.5f),
+    glm::vec3( 1.5f,  2.0f, - 2.5f),
+    glm::vec3( 1.5f,  0.2f, - 1.5f),
+    glm::vec3(-1.3f,  1.0f, - 1.5f)
+};
 
 void setup()
 {
     float vertices[] = {
-         0.5f,  0.5f,  0.0f,  // top right
-         0.5f, -0.5f,  0.0f,  // bottom right
-        -0.5f, -0.5f,  0.0f,  // bottom left
-        -0.5f,  0.5f,  0.0f   // top left 
+        // position           // texture coords.
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f,
+                                     
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
+                                     
+        -0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
+                                     
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
+                                     
+        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
+                                     
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f
     };
 
     unsigned int indices[] = {
-        0, 1, 3,
-        1, 2, 3
+         0,  1,  2,  3,  4,  5,
+         6,  7,  8,  9, 10, 11,
+        12, 13, 14, 15, 16, 17,
+        18, 19, 20, 21, 22, 23,
+        24, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35
     };
 
-    g_BasicSP = new ShaderProgram("scripts/basic_vs.glsl", "scripts/basic_fs.glsl");
+    g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    
+    g_BasicSP = new ShaderProgram("scripts/basic_texturing_vs.glsl", "scripts/basic_texturing_fs.glsl");
+    
+    g_Texture0 = new Texture("textures/container.jpg");
+    g_Texture1 = new Texture("textures/awesomeface.png");
 
-    g_RectangleVAO = new VertexArray();
-    g_RectangleVBO = new VertexBuffer(vertices, sizeof(vertices));
-    g_RectangleEBO = new ElementBuffer(indices, sizeof(indices));
+    g_BasicSP->bind();
+    g_BasicSP->setUniform1i("uTexture0", 0);
+    g_BasicSP->setUniform1i("uTexture1", 1);
+    g_BasicSP->unbind();
 
-    g_RectangleVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    g_RectangleVAO->unbind(); // Unbind VAO before another buffer.
-    g_RectangleVBO->unbind();
-    g_RectangleEBO->unbind();
+    g_Texture0->bind(0);
+    g_Texture1->bind(1);
+
+    g_CubeVAO = new VertexArray();
+    g_CubeVBO = new VertexBuffer(vertices, sizeof(vertices));
+    g_CubeEBO = new ElementBuffer(indices, sizeof(indices));
+
+    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    g_CubeVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    g_CubeVAO->unbind(); // Unbind VAO before another buffer.
+    g_CubeVBO->unbind();
+    g_CubeEBO->unbind();
 }
 
 void render()
 {
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     /* Drawing */
 
     g_BasicSP->bind();
-    g_RectangleVAO->bind();
+    g_CubeVAO->bind();
 
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    // Performing transformations with matrices.
+    // Follow the sequence of operations: translate -> rotate -> scale.
+        
+    g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+    g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
+    for (unsigned int i = 0; i < 10; i++)
+    {
+        float angle = 20.0f * i;
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+
+        modelMatrix = glm::translate(modelMatrix, g_CubePositions[i]);
+        modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+
+        g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    }
+    
     g_BasicSP->unbind();
-    g_RectangleVAO->unbind();
+    g_CubeVAO->unbind();
 }
 
 int main()
@@ -95,6 +208,7 @@ int main()
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     /* Initialize GLAD */
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -106,19 +220,29 @@ int main()
     /* Configure OpenGL context */
     glViewport(0, 0, g_WindowWidth, g_WindowHeight);
 
+    /* Enable OpenGL features */
+    glEnable(GL_DEPTH_TEST);
+
     /* Define window callbacks. */
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSetKeyCallback(window, keyboardCallback);
+    glfwSetCursorPosCallback(window, cursorPositionCallback);
+    glfwSetScrollCallback(window, scrollCallback);
 
     setup();
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
+        float currentFrame = glfwGetTime();
+
+        g_DeltaTime = currentFrame - g_LastFrame;
+        g_LastFrame = currentFrame;
+
         /* Render here */
         render();
 
-        /* Process keyboard/mouse inputs */
+        /* Process some keyboard/mouse inputs */
         processInput(window);
 
         /* Swap front and back buffers */
@@ -134,7 +258,13 @@ int main()
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
+    g_WindowWidth = width;
+    g_WindowHeight = height;
+    g_WindowAspectRatio = (float)width / (float)height;
+
     glViewport(0, 0, width, height);
+
+    g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 }
 
 void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -143,7 +273,13 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     {
         glfwSetWindowShouldClose(window, true);
     }
-    else if (key == GLFW_KEY_M && action == GLFW_PRESS)
+    else if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS)
+    {
+        g_CursorMode = g_CursorMode == GLFW_CURSOR_DISABLED ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+
+        glfwSetInputMode(window, GLFW_CURSOR, g_CursorMode);
+    }
+    else if (key == GLFW_KEY_L && action == GLFW_PRESS)
     {
         g_DrawMode = g_DrawMode == GL_FILL ? GL_LINE : GL_FILL;
 
@@ -151,7 +287,59 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     }
 }
 
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    const float cameraSensitivity = 0.05f;
+
+    if (!g_CursorAttached)
+    {
+        g_CursorPosX = xpos;
+        g_CursorPosY = ypos;
+
+        g_CursorAttached = true;
+    }
+
+    float xOffset = xpos - g_CursorPosX;
+    float yOffset = g_CursorPosY - ypos;
+
+    g_CursorPosX = xpos;
+    g_CursorPosY = ypos;
+
+    xOffset *= cameraSensitivity;
+    yOffset *= cameraSensitivity;
+
+    g_MainCamera->setDirection(xOffset, yOffset);
+}
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    g_FieldOfView -= (float)yoffset;
+    g_FieldOfView = std::min(std::max(g_FieldOfView, 1.0f), 45.0f);
+
+    g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
+}
+
 void processInput(GLFWwindow* window)
 {
-    /* Nothing for while */
+    const float cameraSpeed = 2.5f * g_DeltaTime;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        g_MainCamera->setPosition(cameraSpeed, Camera::Direction::FORWARD);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        g_MainCamera->setPosition(cameraSpeed, Camera::Direction::BACKWARD);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        g_MainCamera->setPosition(cameraSpeed, Camera::Direction::RIGHT);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        g_MainCamera->setPosition(cameraSpeed, Camera::Direction::LEFT);
+    }
 }

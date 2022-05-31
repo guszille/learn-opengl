@@ -33,6 +33,15 @@
     <ClCompile Include="core\ElementBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="util\Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core\VertexBuffer.h">
@@ -47,9 +56,18 @@
     <ClInclude Include="core\ElementBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="util\Texture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Object.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="scripts\basic_vs.glsl" />
-    <None Include="scripts\basic_fs.glsl" />
+    <None Include="scripts\basic_texturing_vs.glsl" />
+    <None Include="scripts\basic_texturing_fs.glsl" />
   </ItemGroup>
 </Project>

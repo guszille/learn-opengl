@@ -26,3 +26,12 @@ void VertexArray::setVertexAttribute(unsigned int index, int size, int type, boo
 	glVertexAttribPointer(index, size, type, normalized, stride, pointer);
 	glEnableVertexAttribArray(index);
 }
+
+int VertexArray::retrieveMaxVertexAttributes()
+{
+	int numberOfAttributes;
+
+	glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &numberOfAttributes);
+
+	return numberOfAttributes;
+}

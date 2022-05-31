@@ -12,6 +12,7 @@ public:
 	void unbind();
 
 	void setVertexAttribute(unsigned int index, int size, int type, bool normalized, unsigned int stride, void* pointer);
+	int retrieveMaxVertexAttributes();
 
 private:
 	unsigned int m_ID;

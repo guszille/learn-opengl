@@ -1,12 +1,12 @@
 #include "ShaderProgram.h"
 
-ShaderProgram::ShaderProgram(const char* vertexShaderFilename, const char* fragmentShaderFilename) : m_ID()
+ShaderProgram::ShaderProgram(const char* vertexShaderFilepath, const char* fragmentShaderFilepath) : m_ID()
 {
 	int success;
 	char infoLog[512];
 
-	unsigned int vertexShaderID = createShader(vertexShaderFilename, GL_VERTEX_SHADER);
-	unsigned int fragmentShaderID = createShader(fragmentShaderFilename, GL_FRAGMENT_SHADER);
+	unsigned int vertexShaderID = createShader(vertexShaderFilepath, GL_VERTEX_SHADER);
+	unsigned int fragmentShaderID = createShader(fragmentShaderFilepath, GL_FRAGMENT_SHADER);
 
 	m_ID = glCreateProgram();
 
@@ -42,9 +42,51 @@ void ShaderProgram::unbind()
 	glUseProgram(0);
 }
 
-const std::string ShaderProgram::readShaderSource(const char* filename)
+void ShaderProgram::setUniform1i(const char* uniformName, const int& data)
 {
-	std::ifstream fileStream(filename);
+	int uniformLocation = glGetUniformLocation(m_ID, uniformName);
+
+	if (uniformLocation > -1)
+	{
+		glUniform1i(uniformLocation, data);
+	}
+	else
+	{
+		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+	}
+}
+
+void ShaderProgram::setUniform4f(const char* uniformName, const glm::vec4& data)
+{
+	int uniformLocation = glGetUniformLocation(m_ID, uniformName);
+
+	if (uniformLocation > -1)
+	{
+		glUniform4f(uniformLocation, data.x, data.y, data.z, data.w);
+	}
+	else
+	{
+		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+	}
+}
+
+void ShaderProgram::setUniformMatrix4fv(const char* uniformName, const glm::mat4& data)
+{
+	int uniformLocation = glGetUniformLocation(m_ID, uniformName);
+
+	if (uniformLocation > -1)
+	{
+		glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, glm::value_ptr(data));
+	}
+	else
+	{
+		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+	}
+}
+
+const std::string ShaderProgram::readShaderSource(const char* filepath)
+{
+	std::ifstream fileStream(filepath);
 	std::stringstream stringBuffer;
 
 	stringBuffer << fileStream.rdbuf();
@@ -52,17 +94,17 @@ const std::string ShaderProgram::readShaderSource(const char* filename)
 	return stringBuffer.str();
 }
 
-const unsigned int ShaderProgram::createShader(const char* shaderFilename, int shaderType)
+const unsigned int ShaderProgram::createShader(const char* shaderFilepath, int shaderType)
 {
 	int success;
 	char infoLog[512];
 
-	const std::string shaderSource = readShaderSource(shaderFilename);
-	const char* raw = shaderSource.c_str();
+	const std::string shaderSource = readShaderSource(shaderFilepath);
+	const char* shaderCode = shaderSource.c_str();
 
 	unsigned int shaderID = glCreateShader(shaderType);
 
-	glShaderSource(shaderID, 1, &raw, NULL);
+	glShaderSource(shaderID, 1, &shaderCode, NULL);
 	glCompileShader(shaderID);
 	glGetShaderiv(shaderID, GL_COMPILE_STATUS, &success);
 
