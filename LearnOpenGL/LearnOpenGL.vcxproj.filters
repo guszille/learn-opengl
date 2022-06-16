@@ -67,7 +67,11 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="scripts\basic_texturing_vs.glsl" />
-    <None Include="scripts\basic_texturing_fs.glsl" />
+    <None Include="scripts\texturing_vs.glsl" />
+    <None Include="scripts\texturing_fs.glsl" />
+    <None Include="scripts\basic_vs.glsl" />
+    <None Include="scripts\phong_lighting_model_fs.glsl" />
+    <None Include="scripts\basic_fs.glsl" />
+    <None Include="scripts\phong_lighting_model_vs.glsl" />
   </ItemGroup>
 </Project>

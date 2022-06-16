@@ -15,6 +15,7 @@ public:
 	static enum class Direction { FORWARD, BACKWARD, RIGHT, LEFT };
 
 	const glm::mat4& getViewMatrix();
+	const glm::vec3& getPosition();
 
 	void setPosition(const float& speed, const Direction& movementDirection);
 	void setDirection(const float& xOffset, const float& yOffset);

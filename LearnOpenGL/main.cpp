@@ -43,72 +43,59 @@ int g_DrawMode   = GL_FILL;
 glm::mat4 g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 
 ShaderProgram* g_BasicSP;
+ShaderProgram* g_PhongLightingModelSP;
+
 VertexArray*   g_CubeVAO;
 VertexBuffer*  g_CubeVBO;
 ElementBuffer* g_CubeEBO;
 
-Camera*  g_MainCamera;
-Texture* g_Texture0;
-Texture* g_Texture1;
-
-glm::vec3 g_CubePositions[] = {
-    glm::vec3( 0.0f,  0.0f,   0.0f),
-    glm::vec3( 2.0f,  5.0f, -15.0f),
-    glm::vec3(-1.5f, -2.2f, - 2.5f),
-    glm::vec3(-3.8f, -2.0f, -12.3f),
-    glm::vec3( 2.4f, -0.4f, - 3.5f),
-    glm::vec3(-1.7f,  3.0f, - 7.5f),
-    glm::vec3( 1.3f, -2.0f, - 2.5f),
-    glm::vec3( 1.5f,  2.0f, - 2.5f),
-    glm::vec3( 1.5f,  0.2f, - 1.5f),
-    glm::vec3(-1.3f,  1.0f, - 1.5f)
-};
+Camera* g_MainCamera;
 
 void setup()
 {
     float vertices[] = {
-        // position           // texture coords.
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f,
-                                     
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
-                                     
-        -0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
-                                     
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
-                                     
-        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  1.0f,
-                                     
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f
+        // positions         // normals
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
     unsigned int indices[] = {
@@ -122,25 +109,15 @@ void setup()
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
-    g_BasicSP = new ShaderProgram("scripts/basic_texturing_vs.glsl", "scripts/basic_texturing_fs.glsl");
-    
-    g_Texture0 = new Texture("textures/container.jpg");
-    g_Texture1 = new Texture("textures/awesomeface.png");
-
-    g_BasicSP->bind();
-    g_BasicSP->setUniform1i("uTexture0", 0);
-    g_BasicSP->setUniform1i("uTexture1", 1);
-    g_BasicSP->unbind();
-
-    g_Texture0->bind(0);
-    g_Texture1->bind(1);
+    g_BasicSP = new ShaderProgram("scripts/basic_vs.glsl", "scripts/basic_fs.glsl");
+    g_PhongLightingModelSP = new ShaderProgram("scripts/phong_lighting_model_vs.glsl", "scripts/phong_lighting_model_fs.glsl");
 
     g_CubeVAO = new VertexArray();
     g_CubeVBO = new VertexBuffer(vertices, sizeof(vertices));
     g_CubeEBO = new ElementBuffer(indices, sizeof(indices));
 
-    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    g_CubeVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0));
+    g_CubeVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
     g_CubeVAO->unbind(); // Unbind VAO before another buffer.
     g_CubeVBO->unbind();
@@ -152,32 +129,57 @@ void render()
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    /* Drawing */
+    /*
+        Drawing...
+    
+        When performing transformations with matrices,
+        use the sequence of operations: translate -> rotate -> scale.
+    */
 
-    g_BasicSP->bind();
-    g_CubeVAO->bind();
+    glm::vec3 lightSourceColor(1.0f, 1.0f, 1.0f);
+    glm::vec3 lightSourcePosition(1.25f, 1.0f, 2.0f);
 
-    // Performing transformations with matrices.
-    // Follow the sequence of operations: translate -> rotate -> scale.
-        
-    g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-    g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-
-    for (unsigned int i = 0; i < 10; i++)
+    // Draw light source.
     {
-        float angle = 20.0f * i;
         glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-        modelMatrix = glm::translate(modelMatrix, g_CubePositions[i]);
-        modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+        modelMatrix = glm::translate(modelMatrix, lightSourcePosition);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f));
+
+        g_BasicSP->bind();
+        g_CubeVAO->bind();
+
+        g_BasicSP->setUniform3f("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
 
         g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+        g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+        g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+        g_BasicSP->unbind();
+        g_CubeVAO->unbind();
     }
-    
-    g_BasicSP->unbind();
-    g_CubeVAO->unbind();
+
+    // Draw cube object.
+    {
+        g_PhongLightingModelSP->bind();
+        g_CubeVAO->bind();
+
+        g_PhongLightingModelSP->setUniform3f("uLightColor", lightSourceColor);
+        g_PhongLightingModelSP->setUniform3f("uLightPos", lightSourcePosition);
+        g_PhongLightingModelSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
+        g_PhongLightingModelSP->setUniform3f("uObjectColor", glm::vec3(1.0f, 0.5f, 0.3f));
+
+        g_PhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", glm::mat4(1.0f));
+        g_PhongLightingModelSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+        g_PhongLightingModelSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+        g_PhongLightingModelSP->unbind();
+        g_CubeVAO->unbind();
+    }
 }
 
 int main()

@@ -15,6 +15,11 @@ const glm::mat4& Camera::getViewMatrix()
 	return m_ViewMatrix;
 }
 
+const glm::vec3& Camera::getPosition()
+{
+	return m_Position;
+}
+
 void Camera::setPosition(const float& speed, const Direction& movementDirection)
 {
 	switch (movementDirection)
