@@ -56,6 +56,20 @@ void ShaderProgram::setUniform1i(const char* uniformName, const int& data)
 	}
 }
 
+void ShaderProgram::setUniform1f(const char* uniformName, const float& data)
+{
+	int uniformLocation = glGetUniformLocation(m_ID, uniformName);
+
+	if (uniformLocation > -1)
+	{
+		glUniform1f(uniformLocation, data);
+	}
+	else
+	{
+		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+	}
+}
+
 void ShaderProgram::setUniform3f(const char* uniformName, const glm::vec3& data)
 {
 	int uniformLocation = glGetUniformLocation(m_ID, uniformName);

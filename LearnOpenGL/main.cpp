@@ -136,7 +136,6 @@ void render()
         use the sequence of operations: translate -> rotate -> scale.
     */
 
-    glm::vec3 lightSourceColor(1.0f, 1.0f, 1.0f);
     glm::vec3 lightSourcePosition(1.25f, 1.0f, 2.0f);
 
     // Draw light source.
@@ -163,13 +162,29 @@ void render()
 
     // Draw cube object.
     {
+        glm::vec3 color;
+
+        color.x = sin(glfwGetTime() * 2.0f);
+        color.y = sin(glfwGetTime() * 0.7f);
+        color.z = sin(glfwGetTime() * 1.3f);
+
+        glm::vec3 lightDiffuseColor = color * glm::vec3(0.5f);
+        glm::vec3 lightAmbientColor = lightDiffuseColor * glm::vec3(0.2f);
+
         g_PhongLightingModelSP->bind();
         g_CubeVAO->bind();
 
-        g_PhongLightingModelSP->setUniform3f("uLightColor", lightSourceColor);
-        g_PhongLightingModelSP->setUniform3f("uLightPos", lightSourcePosition);
         g_PhongLightingModelSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
-        g_PhongLightingModelSP->setUniform3f("uObjectColor", glm::vec3(1.0f, 0.5f, 0.3f));
+
+        g_PhongLightingModelSP->setUniform3f("uLight.position", lightSourcePosition);
+        g_PhongLightingModelSP->setUniform3f("uLight.ambient", lightAmbientColor);
+        g_PhongLightingModelSP->setUniform3f("uLight.diffuse", lightDiffuseColor);
+        g_PhongLightingModelSP->setUniform3f("uLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+
+        g_PhongLightingModelSP->setUniform3f("uMaterial.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+        g_PhongLightingModelSP->setUniform3f("uMaterial.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+        g_PhongLightingModelSP->setUniform3f("uMaterial.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+        g_PhongLightingModelSP->setUniform1f("uMaterial.shininess", 32.0f);
 
         g_PhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", glm::mat4(1.0f));
         g_PhongLightingModelSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());

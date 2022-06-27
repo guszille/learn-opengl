@@ -1,11 +1,26 @@
 #version 330 core
 
+struct Light {
+    vec3 position;
+  
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+struct Material {
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+
+    float shininess;
+}; 
+
 out vec4 FragColor;
 
-uniform vec3 uLightColor;
-uniform vec3 uLightPos;
+uniform Light uLight;
+uniform Material uMaterial;
 uniform vec3 uViewPos;
-uniform vec3 uObjectColor;
 
 in vec3 oiFragPos;
 in vec3 oiFragNormal;
@@ -13,19 +28,18 @@ in vec3 oiFragNormal;
 void main()
 {
     vec3 fragNormal = normalize(oiFragNormal);
-    vec3 lightDir   = normalize(uLightPos - oiFragPos);
-    vec3 viewDir    = normalize(uViewPos - oiFragPos);
+    vec3 lightDir = normalize(uLight.position - oiFragPos);
+    vec3 viewDir = normalize(uViewPos - oiFragPos);
     vec3 reflectDir = reflect(-lightDir, fragNormal);
 
-    float ambientStrength   = 0.1;
-    float diffuseStrength   = max(dot(fragNormal, lightDir), 0.0);
-    float specularShininess = 32;
-    float specularStrength  = 0.5 * pow(max(dot(viewDir, reflectDir), 0.0), specularShininess);
+    float diffuseStrength = max(dot(fragNormal, lightDir), 0.0);
+    float specularStrength = 0.5 * pow(max(dot(viewDir, reflectDir), 0.0), uMaterial.shininess);
 
-    vec3 ambient  = ambientStrength * uLightColor;
-    vec3 diffuse  = diffuseStrength * uLightColor;
-    vec3 specular = specularStrength * uLightColor;
-    vec3 result   = (ambient + diffuse + specular) * uObjectColor;
+    // Calculating "Phong Lighting" components.
 
-    FragColor = vec4(result, 1.0);
+    vec3 ambient = uLight.ambient * uMaterial.ambient;
+    vec3 diffuse = uLight.diffuse * (diffuseStrength * uMaterial.diffuse);
+    vec3 specular = uLight.specular * (specularStrength * uMaterial.specular);
+
+    FragColor = vec4(ambient + diffuse + specular, 1.0);
 }

@@ -20,6 +20,7 @@ public:
 	void unbind();
 
 	void setUniform1i(const char* uniformName, const int& data);
+	void setUniform1f(const char* uniformName, const float& data);
 	void setUniform3f(const char* uniformName, const glm::vec3& data);
 	void setUniform4f(const char* uniformName, const glm::vec4& data);
 	void setUniformMatrix4fv(const char* uniformName, const glm::mat4& data);
