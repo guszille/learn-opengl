@@ -112,8 +112,8 @@ void setup()
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
-    g_BasicSP = new ShaderProgram("scripts/basic_vs.glsl", "scripts/basic_fs.glsl");
-    g_PhongLightingModelSP = new ShaderProgram("scripts/phong_lighting_model_vs.glsl", "scripts/phong_lighting_model_fs.glsl");
+    g_BasicSP = new ShaderProgram("scripts/1_basic_vs.glsl", "scripts/1_basic_fs.glsl");
+    g_PhongLightingModelSP = new ShaderProgram("scripts/3_phong_lighting_model_vs.glsl", "scripts/4_plm_fs_multiple_lc.glsl");
 
     g_ContainerTex = new Texture("textures/container.png");
     g_ContainerSMapTex = new Texture("textures/container_specular_map.png");
@@ -151,9 +151,10 @@ void render()
         use the sequence of operations: translate -> rotate -> scale.
     */
 
-    glm::vec3 lightSourcePosition(1.25f, 1.0f, 2.0f);
+    glm::vec3 lightSourcePosition(1.2f, 1.0f, 2.0f);
 
     // Draw light source.
+    /*
     {
         glm::mat4 modelMatrix = glm::mat4(1.0f);
 
@@ -174,27 +175,58 @@ void render()
         g_BasicSP->unbind();
         g_CubeVAO->unbind();
     }
+    */
 
-    // Draw cube object.
+    // Draw cube objects.
     {
+        glm::vec3 cubePositions[] = {
+            glm::vec3( 0.0f,  0.0f,   0.0f),
+            glm::vec3( 2.0f,  5.0f, -15.0f),
+            glm::vec3(-1.5f, -2.2f, - 2.5f),
+            glm::vec3(-3.8f, -2.0f, -12.3f),
+            glm::vec3( 2.4f, -0.4f, - 3.5f),
+            glm::vec3(-1.7f,  3.0f, - 7.5f),
+            glm::vec3( 1.3f, -2.0f, - 2.5f),
+            glm::vec3( 1.5f,  2.0f, - 2.5f),
+            glm::vec3( 1.5f,  0.2f, - 1.5f),
+            glm::vec3(-1.3f,  1.0f, - 1.5f)
+        };
+
         g_PhongLightingModelSP->bind();
         g_CubeVAO->bind();
 
         g_PhongLightingModelSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
 
+        g_PhongLightingModelSP->setUniform3f("uLight.position", g_MainCamera->getPosition());
+        g_PhongLightingModelSP->setUniform3f("uLight.direction", g_MainCamera->getDirection());
         g_PhongLightingModelSP->setUniform3f("uLight.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
         g_PhongLightingModelSP->setUniform3f("uLight.diffuse", glm::vec3(0.5f, 0.5f, 0.5f));
         g_PhongLightingModelSP->setUniform3f("uLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        g_PhongLightingModelSP->setUniform3f("uLight.position", lightSourcePosition);
+        g_PhongLightingModelSP->setUniform1f("uLight.constant", 1.0f);
+        g_PhongLightingModelSP->setUniform1f("uLight.linear", 0.045f);
+        g_PhongLightingModelSP->setUniform1f("uLight.quadratic", 0.0075f);
+        g_PhongLightingModelSP->setUniform1f("uLight.cutOff", glm::cos(glm::radians(12.5f)));
+        g_PhongLightingModelSP->setUniform1f("uLight.outerCutOff", glm::cos(glm::radians(17.5f)));
 
         // The others material components was defined in setup stage.
         g_PhongLightingModelSP->setUniform1f("uMaterial.shininess", 64.0f);
 
-        g_PhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", glm::mat4(1.0f));
+        // The model matrix will be defined for each object.
         g_PhongLightingModelSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
         g_PhongLightingModelSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        for (unsigned int i = 0; i < 10; i++)
+        {
+            float angle = 20.0f * i;
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+
+            modelMatrix = glm::translate(modelMatrix, cubePositions[i]);
+            modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+
+            g_PhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        }
 
         g_PhongLightingModelSP->unbind();
         g_CubeVAO->unbind();

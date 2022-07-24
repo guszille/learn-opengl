@@ -16,6 +16,7 @@ public:
 
 	const glm::mat4& getViewMatrix();
 	const glm::vec3& getPosition();
+	const glm::vec3& getDirection();
 
 	void setPosition(const float& speed, const Direction& movementDirection);
 	void setDirection(const float& xOffset, const float& yOffset);

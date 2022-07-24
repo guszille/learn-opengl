@@ -20,6 +20,11 @@ const glm::vec3& Camera::getPosition()
 	return m_Position;
 }
 
+const glm::vec3& Camera::getDirection()
+{
+	return m_Direction;
+}
+
 void Camera::setPosition(const float& speed, const Direction& movementDirection)
 {
 	switch (movementDirection)

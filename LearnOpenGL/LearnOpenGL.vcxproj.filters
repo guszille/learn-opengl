@@ -67,11 +67,12 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="scripts\texturing_vs.glsl" />
-    <None Include="scripts\texturing_fs.glsl" />
-    <None Include="scripts\basic_vs.glsl" />
-    <None Include="scripts\phong_lighting_model_fs.glsl" />
-    <None Include="scripts\basic_fs.glsl" />
-    <None Include="scripts\phong_lighting_model_vs.glsl" />
+    <None Include="scripts\2_basic_vs_w_texturing.glsl" />
+    <None Include="scripts\2_basic_fs_w_texturing.glsl" />
+    <None Include="scripts\1_basic_vs.glsl" />
+    <None Include="scripts\3_phong_lighting_model_fs.glsl" />
+    <None Include="scripts\1_basic_fs.glsl" />
+    <None Include="scripts\3_phong_lighting_model_vs.glsl" />
+    <None Include="scripts\4_plm_fs_multiple_lc.glsl" />
   </ItemGroup>
 </Project>
