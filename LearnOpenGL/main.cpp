@@ -1,6 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include <iostream>
+#include <string>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -151,31 +152,38 @@ void render()
         use the sequence of operations: translate -> rotate -> scale.
     */
 
-    glm::vec3 lightSourcePosition(1.2f, 1.0f, 2.0f);
+    glm::vec3 pointLightPositions[] = {
+        glm::vec3( 0.7f,  0.2f,   2.0f),
+        glm::vec3( 2.3f, -3.3f, - 4.0f),
+        glm::vec3(-4.0f,  2.0f, -12.0f),
+        glm::vec3( 0.0f,  0.0f, - 3.0f)
+    };
 
-    // Draw light source.
-    /*
+    // Draw point light sources.
     {
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-
-        modelMatrix = glm::translate(modelMatrix, lightSourcePosition);
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f));
-
         g_BasicSP->bind();
         g_CubeVAO->bind();
 
         g_BasicSP->setUniform3f("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
 
-        g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
         g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
         g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+
+            modelMatrix = glm::translate(modelMatrix, pointLightPositions[i]);
+            modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f));
+
+            g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        }
 
         g_BasicSP->unbind();
         g_CubeVAO->unbind();
     }
-    */
 
     // Draw cube objects.
     {
@@ -197,16 +205,35 @@ void render()
 
         g_PhongLightingModelSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
 
-        g_PhongLightingModelSP->setUniform3f("uLight.position", g_MainCamera->getPosition());
-        g_PhongLightingModelSP->setUniform3f("uLight.direction", g_MainCamera->getDirection());
-        g_PhongLightingModelSP->setUniform3f("uLight.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
-        g_PhongLightingModelSP->setUniform3f("uLight.diffuse", glm::vec3(0.5f, 0.5f, 0.5f));
-        g_PhongLightingModelSP->setUniform3f("uLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        g_PhongLightingModelSP->setUniform1f("uLight.constant", 1.0f);
-        g_PhongLightingModelSP->setUniform1f("uLight.linear", 0.045f);
-        g_PhongLightingModelSP->setUniform1f("uLight.quadratic", 0.0075f);
-        g_PhongLightingModelSP->setUniform1f("uLight.cutOff", glm::cos(glm::radians(12.5f)));
-        g_PhongLightingModelSP->setUniform1f("uLight.outerCutOff", glm::cos(glm::radians(17.5f)));
+        // Defining directional light uniorms.
+        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
+        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.diffuse", glm::vec3(0.2f, 0.2f, 0.2f));
+        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+
+        // Defining point lights uniforms.
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].position").c_str(), pointLightPositions[i]);
+            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].ambient").c_str(), glm::vec3(0.05f, 0.05f, 0.05f));
+            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].diffuse").c_str(), glm::vec3(0.8f, 0.8f, 0.8f));
+            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].specular").c_str(), glm::vec3(1.0f, 1.0f, 1.0f));
+            g_PhongLightingModelSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].constant").c_str(), 1.0f);
+            g_PhongLightingModelSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].linear").c_str(), 0.09f);
+            g_PhongLightingModelSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].quadratic").c_str(), 0.032f);
+        }
+
+        // Defining spot light uniforms.
+        g_PhongLightingModelSP->setUniform3f("uSpotLight.position", g_MainCamera->getPosition());
+        g_PhongLightingModelSP->setUniform3f("uSpotLight.direction", g_MainCamera->getDirection());
+        g_PhongLightingModelSP->setUniform3f("uSpotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
+        g_PhongLightingModelSP->setUniform3f("uSpotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
+        g_PhongLightingModelSP->setUniform3f("uSpotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+        g_PhongLightingModelSP->setUniform1f("uSpotLight.constant", 1.0f);
+        g_PhongLightingModelSP->setUniform1f("uSpotLight.linear", 0.045f);
+        g_PhongLightingModelSP->setUniform1f("uSpotLight.quadratic", 0.0075f);
+        g_PhongLightingModelSP->setUniform1f("uSpotLight.cutOff", glm::cos(glm::radians(12.5f)));
+        g_PhongLightingModelSP->setUniform1f("uSpotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
 
         // The others material components was defined in setup stage.
         g_PhongLightingModelSP->setUniform1f("uMaterial.shininess", 64.0f);

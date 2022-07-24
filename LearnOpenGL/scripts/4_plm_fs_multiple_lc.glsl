@@ -1,5 +1,7 @@
 #version 330 core
 
+#define N_POINT_LIGHTS 4
+
 struct DirectionalLight
 {
     vec3 direction;
@@ -50,7 +52,9 @@ in vec3 oiFragPos;
 in vec3 oiFragNormal;
 in vec2 oiTexCoords;
 
-uniform SpotLight uLight;
+uniform DirectionalLight uDirectionalLight;
+uniform PointLight uPointLights[N_POINT_LIGHTS];
+uniform SpotLight uSpotLight;
 uniform Material uMaterial;
 uniform vec3 uViewPos;
 
@@ -134,5 +138,25 @@ vec3 calcSpotLight(SpotLight lightSource)
 
 void main()
 {
-    FragColor = vec4(calcSpotLight(uLight), 1.0);
+    // TODO:
+    //
+    // There are lot of duplicated calculations in this approach spread out over the light type functions
+    // (e.g. calculating the reflect vector, diffuse and specular terms, and sampling the material textures)
+    // so there's room for optimization here.
+    //
+    vec3 result = vec3(0.0);
+
+    // 1. Directional light.
+    result += calcDirectionalLight(uDirectionalLight);
+
+    // 2. Point lights.
+    for(int i = 0; i < N_POINT_LIGHTS; i++)
+    {
+        result += calcPointLight(uPointLights[i]);
+    }
+
+    // 3. Spot light.
+    result += calcSpotLight(uSpotLight);
+
+    FragColor = vec4(result, 1.0);
 }
