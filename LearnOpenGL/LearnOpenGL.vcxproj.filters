@@ -39,9 +39,6 @@
     <ClCompile Include="util\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="util\Object.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core\VertexBuffer.h">
@@ -62,13 +59,10 @@
     <ClInclude Include="util\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="util\Object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="scripts\2_basic_vs_w_texturing.glsl" />
-    <None Include="scripts\2_basic_fs_w_texturing.glsl" />
+    <None Include="scripts\2_simple_texturing_vs.glsl" />
+    <None Include="scripts\2_simple_texturing_fs.glsl" />
     <None Include="scripts\1_basic_vs.glsl" />
     <None Include="scripts\3_phong_lighting_model_fs.glsl" />
     <None Include="scripts\1_basic_fs.glsl" />

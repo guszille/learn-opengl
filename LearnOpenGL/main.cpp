@@ -38,71 +38,76 @@ void processInput(GLFWwindow* window);
 float g_DeltaTime = 0.0f;
 float g_LastFrame = 0.0f;
 
-int g_CursorMode = GLFW_CURSOR_DISABLED;
-int g_DrawMode   = GL_FILL;
+int g_CursorMode    = GLFW_CURSOR_DISABLED;
+int g_DrawMode      = GL_FILL;
+int g_OutliningMode = 1; // The initial value means active.
 
 glm::mat4 g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 
 ShaderProgram* g_BasicSP;
-ShaderProgram* g_PhongLightingModelSP;
+ShaderProgram* g_TexturingSP;
+
+Camera*        g_MainCamera;
 
 VertexArray*   g_CubeVAO;
 VertexBuffer*  g_CubeVBO;
 ElementBuffer* g_CubeEBO;
 
-Camera*        g_MainCamera;
+VertexArray*   g_PlaneVAO;
+VertexBuffer*  g_PlaneVBO;
+ElementBuffer* g_PlaneEBO;
 
-Texture*       g_ContainerTex;
-Texture*       g_ContainerSMapTex;
+Texture*       g_MarbleTex;
+Texture*       g_MetalTex;
 
 void setup()
 {
-    float vertices[] = {
-        // positions          // normals           // texture coords
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
+    float cubeVertices[] = {
+        // positions          // texture coords
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
 
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
 
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
 
-    unsigned int indices[] = {
+    unsigned int cubeIndices[] = {
          0,  1,  2,  3,  4,  5,
          6,  7,  8,  9, 10, 11,
         12, 13, 14, 15, 16, 17,
@@ -111,39 +116,62 @@ void setup()
         30, 31, 32, 33, 34, 35
     };
 
+    // Note we set the texture coords higher than 1 (together with GL_REPEAT as texture wrapping mode).
+    // This will cause the plane texture to repeat.
+    //
+    float planeVertices[] = {
+        // positions          // texture coords
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+        -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+
+         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
+        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
+         5.0f, -0.5f, -5.0f,  2.0f, 2.0f
+    };
+
+    unsigned int planeIndices[] = {
+        0,  1,  2,  3,  4,  5
+    };
+
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
     g_BasicSP = new ShaderProgram("scripts/1_basic_vs.glsl", "scripts/1_basic_fs.glsl");
-    g_PhongLightingModelSP = new ShaderProgram("scripts/3_phong_lighting_model_vs.glsl", "scripts/4_plm_fs_multiple_lc.glsl");
+    g_TexturingSP = new ShaderProgram("scripts/2_simple_texturing_vs.glsl", "scripts/2_simple_texturing_fs.glsl");
 
-    g_ContainerTex = new Texture("textures/container.png");
-    g_ContainerSMapTex = new Texture("textures/container_specular_map.png");
+    g_MarbleTex = new Texture("assets/textures/marble.jpg");
+    g_MetalTex = new Texture("assets/textures/metal.png");
 
-    g_PhongLightingModelSP->bind();
-    g_PhongLightingModelSP->setUniform1i("uMaterial.diffuse", 0);
-    g_PhongLightingModelSP->setUniform1i("uMaterial.specular", 1);
-    g_PhongLightingModelSP->unbind();
-
-    g_ContainerTex->bind(0);
-    g_ContainerSMapTex->bind(1);
+    g_MarbleTex->bind(0);
+    g_MetalTex->bind(1);
 
     g_CubeVAO = new VertexArray();
-    g_CubeVBO = new VertexBuffer(vertices, sizeof(vertices));
-    g_CubeEBO = new ElementBuffer(indices, sizeof(indices));
+    g_CubeVBO = new VertexBuffer(cubeVertices, sizeof(cubeVertices));
+    g_CubeEBO = new ElementBuffer(cubeIndices, sizeof(cubeIndices));
 
-    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0));
-    g_CubeVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    g_CubeVAO->setVertexAttribute(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
+    g_CubeVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     g_CubeVAO->unbind(); // Unbind VAO before another buffer.
     g_CubeVBO->unbind();
     g_CubeEBO->unbind();
+
+    g_PlaneVAO = new VertexArray();
+    g_PlaneVBO = new VertexBuffer(planeVertices, sizeof(planeVertices));
+    g_PlaneEBO = new ElementBuffer(planeIndices, sizeof(planeIndices));
+
+    g_PlaneVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
+    g_PlaneVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    g_PlaneVAO->unbind(); // Unbind VAO before another buffer.
+    g_PlaneVBO->unbind();
+    g_PlaneEBO->unbind();
 }
 
 void render()
 {
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.25f, 0.55f, 0.85f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
     /*
         Drawing...
@@ -152,111 +180,92 @@ void render()
         use the sequence of operations: translate -> rotate -> scale.
     */
 
-    glm::vec3 pointLightPositions[] = {
-        glm::vec3( 0.7f,  0.2f,   2.0f),
-        glm::vec3( 2.3f, -3.3f, - 4.0f),
-        glm::vec3(-4.0f,  2.0f, -12.0f),
-        glm::vec3( 0.0f,  0.0f, - 3.0f)
-    };
-
-    // Draw point light sources.
+    // Draw objects.
     {
-        g_BasicSP->bind();
-        g_CubeVAO->bind();
-
-        g_BasicSP->setUniform3f("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
-
-        g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-        g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-
-        for (unsigned int i = 0; i < 4; i++)
+        // Plane.
         {
+            glStencilMask(0x00); // Disable writing to the stencil buffer.
+            glStencilFunc(GL_EQUAL, 0, 0xFF); // Default configuration.
+            
+            g_TexturingSP->bind();
+
+            g_PlaneVAO->bind();
+
             glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-            modelMatrix = glm::translate(modelMatrix, pointLightPositions[i]);
-            modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f));
+            g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+            g_TexturingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+            g_TexturingSP->setUniform1i("uTexture", 1);
 
-            g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            g_PlaneVAO->unbind();
+
+            g_TexturingSP->unbind();
+
+            glStencilMask(0xFF);
         }
 
-        g_BasicSP->unbind();
-        g_CubeVAO->unbind();
-    }
-
-    // Draw cube objects.
-    {
-        glm::vec3 cubePositions[] = {
-            glm::vec3( 0.0f,  0.0f,   0.0f),
-            glm::vec3( 2.0f,  5.0f, -15.0f),
-            glm::vec3(-1.5f, -2.2f, - 2.5f),
-            glm::vec3(-3.8f, -2.0f, -12.3f),
-            glm::vec3( 2.4f, -0.4f, - 3.5f),
-            glm::vec3(-1.7f,  3.0f, - 7.5f),
-            glm::vec3( 1.3f, -2.0f, - 2.5f),
-            glm::vec3( 1.5f,  2.0f, - 2.5f),
-            glm::vec3( 1.5f,  0.2f, - 1.5f),
-            glm::vec3(-1.3f,  1.0f, - 1.5f)
-        };
-
-        g_PhongLightingModelSP->bind();
-        g_CubeVAO->bind();
-
-        g_PhongLightingModelSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
-
-        // Defining directional light uniorms.
-        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
-        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
-        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.diffuse", glm::vec3(0.2f, 0.2f, 0.2f));
-        g_PhongLightingModelSP->setUniform3f("uDirectionalLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-
-        // Defining point lights uniforms.
-        for (unsigned int i = 0; i < 4; i++)
+        // Cube.
         {
-            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].position").c_str(), pointLightPositions[i]);
-            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].ambient").c_str(), glm::vec3(0.05f, 0.05f, 0.05f));
-            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].diffuse").c_str(), glm::vec3(0.8f, 0.8f, 0.8f));
-            g_PhongLightingModelSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].specular").c_str(), glm::vec3(1.0f, 1.0f, 1.0f));
-            g_PhongLightingModelSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].constant").c_str(), 1.0f);
-            g_PhongLightingModelSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].linear").c_str(), 0.09f);
-            g_PhongLightingModelSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].quadratic").c_str(), 0.032f);
-        }
+            // Updates the stencil buffer if both depth and stencil tests passes.
+            //
+            glStencilMask(0xFF); // Enable writing to the stencil buffer.
+            glStencilFunc(GL_ALWAYS, 1, 0xFF);
 
-        // Defining spot light uniforms.
-        g_PhongLightingModelSP->setUniform3f("uSpotLight.position", g_MainCamera->getPosition());
-        g_PhongLightingModelSP->setUniform3f("uSpotLight.direction", g_MainCamera->getDirection());
-        g_PhongLightingModelSP->setUniform3f("uSpotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
-        g_PhongLightingModelSP->setUniform3f("uSpotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
-        g_PhongLightingModelSP->setUniform3f("uSpotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        g_PhongLightingModelSP->setUniform1f("uSpotLight.constant", 1.0f);
-        g_PhongLightingModelSP->setUniform1f("uSpotLight.linear", 0.045f);
-        g_PhongLightingModelSP->setUniform1f("uSpotLight.quadratic", 0.0075f);
-        g_PhongLightingModelSP->setUniform1f("uSpotLight.cutOff", glm::cos(glm::radians(12.5f)));
-        g_PhongLightingModelSP->setUniform1f("uSpotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
+            g_TexturingSP->bind();
 
-        // The others material components was defined in setup stage.
-        g_PhongLightingModelSP->setUniform1f("uMaterial.shininess", 64.0f);
+            g_CubeVAO->bind();
 
-        // The model matrix will be defined for each object.
-        g_PhongLightingModelSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-        g_PhongLightingModelSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-
-        for (unsigned int i = 0; i < 10; i++)
-        {
-            float angle = 20.0f * i;
             glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-            modelMatrix = glm::translate(modelMatrix, cubePositions[i]);
-            modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            // By creating a small offset between two objects you can completely remove
+            // z-fighting between the two objects.
+            //
+            // modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.0f, -0.0001f, -1.0f));
 
-            g_PhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+            g_TexturingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+            g_TexturingSP->setUniform1i("uTexture", 0);
 
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        }
 
-        g_PhongLightingModelSP->unbind();
-        g_CubeVAO->unbind();
+            g_CubeVAO->unbind();
+
+            g_TexturingSP->unbind();
+
+            if (g_OutliningMode)
+            {
+                glStencilMask(0x00); // Disable writing to the stencil buffer.
+                glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+                
+                glDisable(GL_DEPTH_TEST);
+
+                g_BasicSP->bind();
+
+                g_CubeVAO->bind();
+
+                glm::mat4 modelMatrix = glm::mat4(1.0f);
+                modelMatrix = glm::scale(modelMatrix, glm::vec3(1.05f));
+
+                g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+                g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+                g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+                g_BasicSP->setUniform3f("uColor", glm::vec3(0.35f, 0.85f, 0.35f));
+
+                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+                g_CubeVAO->unbind();
+
+                g_BasicSP->unbind();
+
+                glEnable(GL_DEPTH_TEST);
+
+                glStencilMask(0xFF);
+            }
+        }
     }
 }
 
@@ -302,6 +311,15 @@ int main()
 
     /* Enable OpenGL features */
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
+
+    /* Configure depth buffer. */
+    glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE); // Allows to enable/disable writing to the depth buffer.
+
+    /* Configure stencil buffer. */
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // Operation when stencil test fail, stencil test passes but
+                                               // depth test fail or both passes.
 
     /* Define window callbacks. */
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
@@ -364,6 +382,10 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
         g_DrawMode = g_DrawMode == GL_FILL ? GL_LINE : GL_FILL;
 
         glPolygonMode(GL_FRONT_AND_BACK, g_DrawMode);
+    }
+    else if (key == GLFW_KEY_O && action == GLFW_PRESS)
+    {
+        g_OutliningMode = (g_OutliningMode + 1) % 2;
     }
 }
 

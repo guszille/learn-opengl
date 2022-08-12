@@ -153,7 +153,6 @@
     <ClCompile Include="core\VertexArray.cpp" />
     <ClCompile Include="core\VertexBuffer.cpp" />
     <ClCompile Include="util\Camera.cpp" />
-    <ClCompile Include="util\Object.cpp" />
     <ClCompile Include="util\Texture.cpp" />
     <ClCompile Include="vendor\libs\glad\glad.c" />
   </ItemGroup>
@@ -163,7 +162,6 @@
     <ClInclude Include="core\VertexArray.h" />
     <ClInclude Include="core\VertexBuffer.h" />
     <ClInclude Include="util\Camera.h" />
-    <ClInclude Include="util\Object.h" />
     <ClInclude Include="util\Texture.h" />
   </ItemGroup>
   <ItemGroup>
@@ -171,8 +169,8 @@
     <None Include="scripts\3_phong_lighting_model_fs.glsl" />
     <None Include="scripts\1_basic_vs.glsl" />
     <None Include="scripts\3_phong_lighting_model_vs.glsl" />
-    <None Include="scripts\2_basic_fs_w_texturing.glsl" />
-    <None Include="scripts\2_basic_vs_w_texturing.glsl" />
+    <None Include="scripts\2_simple_texturing_fs.glsl" />
+    <None Include="scripts\2_simple_texturing_vs.glsl" />
     <None Include="scripts\4_plm_fs_multiple_lc.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
