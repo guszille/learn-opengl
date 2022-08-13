@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+#include <map>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -40,7 +42,7 @@ float g_LastFrame = 0.0f;
 
 int g_CursorMode    = GLFW_CURSOR_DISABLED;
 int g_DrawMode      = GL_FILL;
-int g_OutliningMode = 1; // The initial value means active.
+int g_OutliningMode = 0; // The initial value means inactive.
 
 glm::mat4 g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 
@@ -59,6 +61,8 @@ ElementBuffer* g_PlaneEBO;
 
 Texture*       g_MarbleTex;
 Texture*       g_MetalTex;
+Texture*       g_GrassTex;
+Texture*       g_WindowTex;
 
 void setup()
 {
@@ -121,13 +125,12 @@ void setup()
     //
     float planeVertices[] = {
         // positions          // texture coords
-         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
-        -5.0f, -0.5f,  5.0f,  0.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
-
-         5.0f, -0.5f,  5.0f,  2.0f, 0.0f,
-        -5.0f, -0.5f, -5.0f,  0.0f, 2.0f,
-         5.0f, -0.5f, -5.0f,  2.0f, 2.0f
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f
     };
 
     unsigned int planeIndices[] = {
@@ -141,9 +144,13 @@ void setup()
 
     g_MarbleTex = new Texture("assets/textures/marble.jpg");
     g_MetalTex = new Texture("assets/textures/metal.png");
+    g_GrassTex = new Texture("assets/textures/grass.png");
+    g_WindowTex = new Texture("assets/textures/transparent_window.png");
 
     g_MarbleTex->bind(0);
     g_MetalTex->bind(1);
+    g_GrassTex->bind(2);
+    g_WindowTex->bind(3);
 
     g_CubeVAO = new VertexArray();
     g_CubeVBO = new VertexBuffer(cubeVertices, sizeof(cubeVertices));
@@ -182,7 +189,7 @@ void render()
 
     // Draw objects.
     {
-        // Plane.
+        // Ground.
         {
             glStencilMask(0x00); // Disable writing to the stencil buffer.
             glStencilFunc(GL_EQUAL, 0, 0xFF); // Default configuration.
@@ -192,6 +199,9 @@ void render()
             g_PlaneVAO->bind();
 
             glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -0.5f, 0.0f));
+            modelMatrix = glm::rotate(modelMatrix, glm::radians(-90.f), glm::vec3(1.0f, 0.0f, 0.0f));
+            modelMatrix = glm::scale(modelMatrix, glm::vec3(10.0f, 10.0f, 0.0f));
 
             g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
             g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
@@ -221,7 +231,7 @@ void render()
             glm::mat4 modelMatrix = glm::mat4(1.0f);
 
             // By creating a small offset between two objects you can completely remove
-            // z-fighting between the two objects.
+            // z-fighting between them.
             //
             // modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.0f, -0.0001f, -1.0f));
 
@@ -236,12 +246,12 @@ void render()
 
             g_TexturingSP->unbind();
 
-            if (g_OutliningMode)
+            if (g_OutliningMode) // Outlining.
             {
                 glStencilMask(0x00); // Disable writing to the stencil buffer.
                 glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-                
-                glDisable(GL_DEPTH_TEST);
+
+                // glDisable(GL_DEPTH_TEST);
 
                 g_BasicSP->bind();
 
@@ -261,10 +271,82 @@ void render()
 
                 g_BasicSP->unbind();
 
-                glEnable(GL_DEPTH_TEST);
+                // glEnable(GL_DEPTH_TEST);
 
                 glStencilMask(0xFF);
             }
+        }
+
+        // Grass.  
+        {
+            glStencilMask(0x00); // Disable writing to the stencil buffer.
+            glStencilFunc(GL_ALWAYS, 1, 0xFF);
+
+            g_TexturingSP->bind();
+
+            g_PlaneVAO->bind();
+
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.5f, 0.0f, -1.0f));
+
+            g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+            g_TexturingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+            g_TexturingSP->setUniform1i("uTexture", 2);
+            g_TexturingSP->setUniform1f("uAlphaThreshold", 0.1f); // Using a threshold to discard fragments with a lower alpha value.
+
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+            g_PlaneVAO->unbind();
+
+            g_TexturingSP->unbind();
+
+            glStencilMask(0xFF);
+        }
+
+        // Windows.
+        {
+            std::vector<glm::vec3> windows
+            {
+                glm::vec3( 0.75f, 0.0f,  1.5f),
+                glm::vec3( 0.75f, 0.0f, -1.5f),
+                glm::vec3(-1.25f, 0.0f,  0.5f),
+            };
+
+            std::map<float, glm::vec3> sortedWindows;
+            for (unsigned int i = 0; i < windows.size(); i++)
+            {
+                float distance = glm::length(g_MainCamera->getPosition() - windows[i]);
+                sortedWindows[distance] = windows[i];
+            }
+
+            glStencilMask(0x00); // Disable writing to the stencil buffer.
+            glStencilFunc(GL_ALWAYS, 1, 0xFF);
+
+            g_TexturingSP->bind();
+
+            g_PlaneVAO->bind();
+
+            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+            g_TexturingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+            g_TexturingSP->setUniform1i("uTexture", 3);
+            g_TexturingSP->setUniform1f("uAlphaThreshold", 0.0f); // Disabling the threshold...
+
+            for (std::map<float, glm::vec3>::reverse_iterator it = sortedWindows.rbegin(); it != sortedWindows.rend(); ++it)
+            {
+                glm::mat4 modelMatrix = glm::mat4(1.0f);
+                modelMatrix = glm::translate(modelMatrix, it->second);
+
+                g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            }
+
+            g_PlaneVAO->unbind();
+
+            g_TexturingSP->unbind();
+
+            glStencilMask(0xFF);
         }
     }
 }
@@ -312,6 +394,7 @@ int main()
     /* Enable OpenGL features */
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_STENCIL_TEST);
+    glEnable(GL_BLEND);
 
     /* Configure depth buffer. */
     glDepthFunc(GL_LESS);
@@ -319,7 +402,11 @@ int main()
 
     /* Configure stencil buffer. */
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE); // Operation when stencil test fail, stencil test passes but
-                                               // depth test fail or both passes.
+                                               // depth test fail, both passes.
+
+    /* Configure blending. */
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Allows us to set the source and destination factor values of the blend equation.
+    // We can also do more stuff with "glBlendColor", "glBlendFuncSeparate" and "glBlendEquation" functions. 
 
     /* Define window callbacks. */
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
