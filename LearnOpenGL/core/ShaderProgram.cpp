@@ -20,7 +20,7 @@ ShaderProgram::ShaderProgram(const char* vertexShaderFilepath, const char* fragm
 	{
 		glGetProgramInfoLog(m_ID, 512, NULL, infoLog);
 
-		std::cout << "ERROR::SHADER::PROGRAM::LINKAGE_FAILED\n" << infoLog << std::endl;
+		std::cout << "[ERROR] SHADER PROGRAM: Linkage failed!\n" << infoLog << std::endl;
 	}
 
 	glDeleteShader(vertexShaderID);
@@ -52,7 +52,7 @@ void ShaderProgram::setUniform1i(const char* uniformName, const int& data)
 	}
 	else
 	{
-		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
 	}
 }
 
@@ -66,7 +66,7 @@ void ShaderProgram::setUniform1f(const char* uniformName, const float& data)
 	}
 	else
 	{
-		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
 	}
 }
 
@@ -80,7 +80,7 @@ void ShaderProgram::setUniform3f(const char* uniformName, const glm::vec3& data)
 	}
 	else
 	{
-		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
 	}
 }
 
@@ -94,7 +94,7 @@ void ShaderProgram::setUniform4f(const char* uniformName, const glm::vec4& data)
 	}
 	else
 	{
-		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
 	}
 }
 
@@ -108,7 +108,7 @@ void ShaderProgram::setUniformMatrix4fv(const char* uniformName, const glm::mat4
 	}
 	else
 	{
-		std::cout << "Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform \"" << uniformName << "\"" << std::endl;
 	}
 }
 
@@ -140,7 +140,7 @@ const unsigned int ShaderProgram::createShader(const char* shaderFilepath, int s
 	{
 		glGetShaderInfoLog(shaderID, 512, NULL, infoLog);
 
-		std::cout << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+		std::cout << "[ERROR] SHADER PROGRAM: Compilation failed!\n" << infoLog << std::endl;
 
 		glDeleteShader(shaderID);
 		return 0;

@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="core\FrameBuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="core\ElementBuffer.cpp" />
     <ClCompile Include="core\ShaderProgram.cpp" />
@@ -158,6 +159,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core\ElementBuffer.h" />
+    <ClInclude Include="core\FrameBuffer.h" />
     <ClInclude Include="core\ShaderProgram.h" />
     <ClInclude Include="core\VertexArray.h" />
     <ClInclude Include="core\VertexBuffer.h" />
@@ -172,6 +174,8 @@
     <None Include="scripts\2_simple_texturing_fs.glsl" />
     <None Include="scripts\2_simple_texturing_vs.glsl" />
     <None Include="scripts\4_plm_fs_multiple_lc.glsl" />
+    <None Include="scripts\5_screen_quad_fs.glsl" />
+    <None Include="scripts\5_screen_quad_vs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

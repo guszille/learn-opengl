@@ -33,7 +33,7 @@ Texture::Texture(const char* filepath)
 		break;
 
 	default:
-		std::cout << "Texture format not supported." << std::endl;
+		std::cout << "[ERROR] TEXTURE: Texture format not supported." << std::endl;
 
 		break;
 	}
@@ -48,7 +48,7 @@ Texture::Texture(const char* filepath)
 	}
 	else
 	{
-		std::cout << "Failed to load texture in \"" << filepath << "\"" << std::endl;
+		std::cout << "[ERROR] TEXTURE: Failed to load texture in \"" << filepath << "\"" << std::endl;
 	}
 
 	stbi_image_free(data);
@@ -68,7 +68,7 @@ void Texture::bind(int unit)
 	}
 	else
 	{
-		std::cout << "Failed to bind texture in " << unit << " unit" << std::endl;
+		std::cout << "[ERROR] TEXTURE: Failed to bind texture in " << unit << " unit" << std::endl;
 	}
 }
 

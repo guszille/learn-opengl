@@ -46,7 +46,7 @@ void Camera::setPosition(const float& speed, const Direction& movementDirection)
 		break;
 
 	default:
-		std::cout << "Camera direction not supported" << std::endl;
+		std::cout << "[ERROR] CAMERA: Camera direction not supported" << std::endl;
 		break;
 	}
 
