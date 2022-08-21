@@ -46,10 +46,10 @@ int g_DrawMode    = GL_FILL;
 
 glm::mat4 g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 
+ShaderProgram* g_BasicSP;
 ShaderProgram* g_TexturingSP;
-ShaderProgram* g_ScreenSP;
 
-FrameBuffer*   g_BasicFB;
+FrameBuffer*   g_MirrorFB;
 
 Camera*        g_MainCamera;
 
@@ -65,6 +65,11 @@ VertexBuffer*  g_QuadVBO;
 
 Texture*       g_MetalTex;
 Texture*       g_BoxTex;
+
+glm::vec3 g_MirrorObjectPos(0.0f, 0.2f, -3.0f);
+glm::vec3 g_MirrorObjectDir(0.0f, 0.0f,  1.0f);
+
+glm::mat4 g_MirrorViewMatrix = glm::lookAt(g_MirrorObjectPos, g_MirrorObjectPos + g_MirrorObjectDir, glm::vec3(0.0f, 1.0f, 0.0f));
 
 void setup()
 {
@@ -139,30 +144,29 @@ void setup()
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f
     };
 
-    // Vertex attributes for a quad that fills the entire screen in "Normalized Device Coordinates".
+    // With inverted x-axis texture coordinates.
     //
     float quadVertices[] = {
         // positions   // texture coords
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-
-        -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f
+        -0.88f, -0.5f,  0.0f,  1.0f, 0.0f, // bottom-left
+         0.88f, -0.5f,  0.0f,  0.0f, 0.0f, // bottom-right
+         0.88f,  0.5f,  0.0f,  0.0f, 1.0f, // top-right
+         0.88f,  0.5f,  0.0f,  0.0f, 1.0f, // top-right
+        -0.88f,  0.5f,  0.0f,  1.0f, 1.0f, // top-left
+        -0.88f, -0.5f,  0.0f,  1.0f, 0.0f, // bottom-left
     };
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
+    g_BasicSP = new ShaderProgram("scripts/1_basic_vs.glsl", "scripts/1_basic_fs.glsl");
     g_TexturingSP = new ShaderProgram("scripts/2_simple_texturing_vs.glsl", "scripts/2_simple_texturing_fs.glsl");
-    g_ScreenSP = new ShaderProgram("scripts/5_screen_quad_vs.glsl", "scripts/5_screen_quad_fs.glsl");
 
-    g_BasicFB = new FrameBuffer(g_WindowWidth, g_WindowHeight);
+    g_MirrorFB = new FrameBuffer(g_WindowWidth, g_WindowHeight);
 
     g_MetalTex = new Texture("assets/textures/metal.png");
     g_BoxTex = new Texture("assets/textures/box.jpg");
 
-    g_BasicFB->bindColorBuffer(0);
+    g_MirrorFB->bindColorBuffer(0);
 
     g_MetalTex->bind(1);
     g_BoxTex->bind(2);
@@ -190,11 +194,19 @@ void setup()
     g_QuadVAO = new VertexArray();
     g_QuadVBO = new VertexBuffer(quadVertices, sizeof(quadVertices));
 
-    g_QuadVAO->setVertexAttribute(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(0));
-    g_QuadVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    g_QuadVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
+    g_QuadVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     g_QuadVAO->unbind(); // Unbind VAO before another buffer.
     g_QuadVBO->unbind();
+}
+
+void updateMirrorViewMatrix()
+{
+    glm::vec3 viwerToMirror = glm::normalize(g_MirrorObjectPos - g_MainCamera->getPosition()); // Incident ray.
+    glm::vec3 reflected = glm::normalize(glm::reflect(viwerToMirror, g_MirrorObjectDir));
+    
+    g_MirrorViewMatrix = glm::lookAt(g_MirrorObjectPos, g_MirrorObjectPos + reflected, glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 /*
@@ -203,17 +215,15 @@ void setup()
  * When performing transformations with matrices,
  * use the sequence of operations: translate -> rotate -> scale.
  */
-void render()
+void drawScene(const glm::mat4& viewMatrix)
 {
-    g_BasicFB->bind();
-
     glClearColor(0.25f, 0.55f, 0.85f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Draw objects.
     {
         // Ground.
-        {          
+        {
             g_TexturingSP->bind();
             g_PlaneVAO->bind();
 
@@ -223,7 +233,7 @@ void render()
             modelMatrix = glm::scale(modelMatrix, glm::vec3(7.5f, 7.5f, 0.0f));
 
             g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", viewMatrix);
             g_TexturingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
             g_TexturingSP->setUniform1i("uTexture", 1);
 
@@ -235,12 +245,12 @@ void render()
 
         // Cube.
         {
-            glEnable(GL_CULL_FACE); // Only enables face culling for rendering closed shapes.
+            glEnable(GL_CULL_FACE); // Enable face culling only for rendering closed shapes.
 
             g_TexturingSP->bind();
             g_CubeVAO->bind();
 
-            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", viewMatrix);
             g_TexturingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
             g_TexturingSP->setUniform1i("uTexture", 2);
 
@@ -250,14 +260,14 @@ void render()
                 modelMatrix = glm::translate(modelMatrix, glm::vec3( 2.0f, 0.0f, -0.5f));
 
                 g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-                
+
                 glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
             }
 
             // Cube #2.
             {
                 glm::mat4 modelMatrix = glm::mat4(1.0f);
-                modelMatrix = glm::translate(modelMatrix, glm::vec3(-0.5f, 0.0f, -1.5f));
+                modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.5f, 0.0f,  0.5f));
 
                 g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
 
@@ -267,30 +277,65 @@ void render()
             g_CubeVAO->unbind();
             g_TexturingSP->unbind();
 
-            glDisable(GL_CULL_FACE); 
+            glDisable(GL_CULL_FACE);
         }
     }
+}
 
-    g_BasicFB->unbind();
-
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Draw screen quad.
+void render()
+{
+    // Render on the mirror framebuffer.
     {
-        glDisable(GL_DEPTH_TEST);
+        g_MirrorFB->bind();
 
-        g_ScreenSP->bind();
-        g_QuadVAO->bind();
+        drawScene(g_MirrorViewMatrix);
 
-        g_ScreenSP->setUniform1i("uScreenTexture", 0);
+        g_MirrorFB->unbind();
+    }
 
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+    // Render on the default framebuffer.
+    {
+        drawScene(g_MainCamera->getViewMatrix());
 
-        g_QuadVAO->unbind();
-        g_ScreenSP->unbind();
+        // Mirror.
+        {
+            // Mirror frame.
+            {
+                g_BasicSP->bind();
+                g_QuadVAO->bind();
 
-        glEnable(GL_DEPTH_TEST);
+                glm::mat4 modelMatrix = glm::mat4(1.0f);
+                modelMatrix = glm::translate(modelMatrix, g_MirrorObjectPos);
+                modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, -0.0005f));
+                modelMatrix = glm::scale(modelMatrix, glm::vec3(1.1f, 1.1f, 1.0f));
+
+                g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+                g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+                g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+                g_BasicSP->setUniform3f("uColor", glm::vec3(0.25f, 0.25f, 0.25f));
+
+                glDrawArrays(GL_TRIANGLES, 0, 6);
+
+                g_QuadVAO->unbind();
+                g_BasicSP->unbind();
+            }
+
+            g_TexturingSP->bind();
+            g_QuadVAO->bind();
+
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, g_MirrorObjectPos);
+
+            g_TexturingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_TexturingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+            g_TexturingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+            g_TexturingSP->setUniform1i("uTexture", 0);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            g_QuadVAO->unbind();
+            g_TexturingSP->unbind();
+        }
     }
 }
 
@@ -301,7 +346,8 @@ int main()
     /* Initialize GLFW */
     if (!glfwInit())
     {
-        std::cout << "Failed to initialize GLFW" << std::endl;
+        std::cout << "Failed to initialize GLFW." << std::endl;
+
         return -1;
     }
 
@@ -315,8 +361,9 @@ int main()
     window = glfwCreateWindow(g_WindowWidth, g_WindowHeight, "LearnOpenGL", NULL, NULL);
     if (!window)
     {
-        std::cout << "Failed to create GLFW window" << std::endl;
+        std::cout << "Failed to create GLFW window." << std::endl;
         glfwTerminate();
+
         return -1;
     }
 
@@ -327,7 +374,8 @@ int main()
     /* Initialize GLAD */
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cout << "Failed to initialize GLAD" << std::endl;
+        std::cout << "Failed to initialize GLAD." << std::endl;
+
         return -1;
     }
 
@@ -337,7 +385,7 @@ int main()
     /* Enable OpenGL features */
     glEnable(GL_DEPTH_TEST);   // Enable depth test.
     glEnable(GL_BLEND);        // Enable blending.
-    // Face culling will be enabled only for rendering closed shapes.
+    // Face culling will be enable only for rendering closed shapes.
 
     /* Configure depth buffer */
     glDepthFunc(GL_LESS);
@@ -368,6 +416,7 @@ int main()
         g_LastFrame = currentFrame;
 
         /* Render here */
+        updateMirrorViewMatrix();
         render();
 
         /* Process some keyboard/mouse inputs */
@@ -381,6 +430,7 @@ int main()
     }
 
     glfwTerminate();
+
     return 0;
 }
 
