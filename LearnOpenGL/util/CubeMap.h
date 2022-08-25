@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <iostream>
 
 #include <glad/glad.h>
@@ -10,16 +11,15 @@
 #include <stb/stb_image.h>
 #endif // _STB_IMAGE_INCLUDED
 
-class Texture
+class CubeMap
 {
 public:
-	Texture(const char* filepath);
-	~Texture();
+	CubeMap(const char* filepath, const std::array<const char*, 6>& faces);
+	~CubeMap();
 
 	void bind(int unit);
 	void unbind();
 
 private:
 	unsigned int m_ID;
-	int m_Width, m_Height, m_ColorChannels;
 };

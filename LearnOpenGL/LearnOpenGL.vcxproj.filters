@@ -42,6 +42,9 @@
     <ClCompile Include="core\FrameBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="util\CubeMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core\VertexBuffer.h">
@@ -65,6 +68,9 @@
     <ClInclude Include="core\FrameBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="util\CubeMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="scripts\2_simple_texturing_vs.glsl" />
@@ -76,5 +82,9 @@
     <None Include="scripts\4_plm_fs_multiple_lc.glsl" />
     <None Include="scripts\5_screen_quad_vs.glsl" />
     <None Include="scripts\5_screen_quad_fs.glsl" />
+    <None Include="scripts\6_cube_map_fs.glsl" />
+    <None Include="scripts\6_cube_map_vs.glsl" />
+    <None Include="scripts\7_enviroment_mapping_vs.glsl" />
+    <None Include="scripts\7_enviroment_mapping_fs.glsl" />
   </ItemGroup>
 </Project>

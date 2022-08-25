@@ -48,8 +48,10 @@ Texture::Texture(const char* filepath)
 	}
 	else
 	{
-		std::cout << "[ERROR] TEXTURE: Failed to load texture in \"" << filepath << "\"" << std::endl;
+		std::cout << "[ERROR] TEXTURE: Failed to load texture in \"" << filepath << "\"." << std::endl;
 	}
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	stbi_image_free(data);
 }

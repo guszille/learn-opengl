@@ -154,6 +154,7 @@
     <ClCompile Include="core\VertexArray.cpp" />
     <ClCompile Include="core\VertexBuffer.cpp" />
     <ClCompile Include="util\Camera.cpp" />
+    <ClCompile Include="util\CubeMap.cpp" />
     <ClCompile Include="util\Texture.cpp" />
     <ClCompile Include="vendor\libs\glad\glad.c" />
   </ItemGroup>
@@ -164,6 +165,7 @@
     <ClInclude Include="core\VertexArray.h" />
     <ClInclude Include="core\VertexBuffer.h" />
     <ClInclude Include="util\Camera.h" />
+    <ClInclude Include="util\CubeMap.h" />
     <ClInclude Include="util\Texture.h" />
   </ItemGroup>
   <ItemGroup>
@@ -176,6 +178,10 @@
     <None Include="scripts\4_plm_fs_multiple_lc.glsl" />
     <None Include="scripts\5_screen_quad_fs.glsl" />
     <None Include="scripts\5_screen_quad_vs.glsl" />
+    <None Include="scripts\6_cube_map_fs.glsl" />
+    <None Include="scripts\6_cube_map_vs.glsl" />
+    <None Include="scripts\7_enviroment_mapping_fs.glsl" />
+    <None Include="scripts\7_enviroment_mapping_vs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
