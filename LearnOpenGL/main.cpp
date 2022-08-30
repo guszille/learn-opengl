@@ -15,6 +15,7 @@
 #include "core/ElementBuffer.h"
 #include "core/ShaderProgram.h"
 #include "core/FrameBuffer.h"
+#include "core/UniformBuffer.h"
 
 #include "util/Camera.h"
 #include "util/Texture.h"
@@ -45,140 +46,83 @@ int g_DrawMode    = GL_FILL;
 
 glm::mat4 g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 
-ShaderProgram* g_CubeMapSP;
-ShaderProgram* g_EnvMappingSP;
+ShaderProgram* g_InBlocksSP;
 
 Camera*        g_MainCamera;
 
 VertexArray*   g_CubeVAO;
 VertexBuffer*  g_CubeVBO;
 
-VertexArray*   g_SkyboxVAO;
-VertexBuffer*  g_SkyboxVBO;
-
-CubeMap*       g_SkyboxCM;
+UniformBuffer* g_MatricesUB;
 
 void setup()
 {
     float cubeVertices[] = {
-        // positions          // normals
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        // positions         
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+        -0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
 
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
 
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+         0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f, -0.5f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+        -0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f, -0.5f
     };
-
-    float skyboxVertices[] = {
-        // positions and texture coords         
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        -1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f
-    };
-
-    std::array<const char*, 6> cubeMapFaces = { "right.jpg", "left.jpg", "top.jpg", "bottom.jpg", "front.jpg", "back.jpg" };
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
-    g_CubeMapSP = new ShaderProgram("scripts/6_cube_map_vs.glsl", "scripts/6_cube_map_fs.glsl");
-    g_EnvMappingSP = new ShaderProgram("scripts/7_enviroment_mapping_vs.glsl", "scripts/7_enviroment_mapping_fs.glsl");
+    g_InBlocksSP = new ShaderProgram("scripts/8_interface_blocks_vs.glsl", "scripts/1_basic_fs.glsl");
 
-    g_SkyboxCM = new CubeMap("assets/textures/skybox", cubeMapFaces);
-
-    g_SkyboxCM->bind(0);
+    g_InBlocksSP->setUniformBlock("uMatrices", 0);
 
     g_CubeVAO = new VertexArray();
     g_CubeVBO = new VertexBuffer(cubeVertices, sizeof(cubeVertices));
 
-    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(0));
-    g_CubeVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    g_CubeVAO->bind();
+    g_CubeVBO->bind();
+
+    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(0));
 
     // Unbind VAO before another buffer.
     g_CubeVAO->unbind();
     g_CubeVBO->unbind();
 
-    g_SkyboxVAO = new VertexArray();
-    g_SkyboxVBO = new VertexBuffer(skyboxVertices, sizeof(skyboxVertices));
+    g_MatricesUB = new UniformBuffer(2 * sizeof(glm::mat4));
 
-    g_SkyboxVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(0));
-
-    // Unbind VAO before another buffer.
-    g_SkyboxVAO->unbind();
-    g_SkyboxVBO->unbind();
+    g_MatricesUB->link(0);
 }
 
 /*
@@ -192,57 +136,33 @@ void render()
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // Update Uniform Buffer.
+    {
+        g_MatricesUB->bind();
+
+        g_MatricesUB->update(0, sizeof(glm::mat4), glm::value_ptr(g_MainCamera->getViewMatrix()));
+        g_MatricesUB->update(sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(g_ProjectionMatrix));
+
+        g_MatricesUB->unbind();
+    }
+
     // Draw objects.
     {
         // Cube.
         {
-            g_EnvMappingSP->bind();
+            g_InBlocksSP->bind();
             g_CubeVAO->bind();
 
             glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-            g_EnvMappingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-            g_EnvMappingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-            g_EnvMappingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-            g_EnvMappingSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
-            g_EnvMappingSP->setUniform1i("uCubeMap", 0);
-            g_EnvMappingSP->setUniform1i("uMappingStrategy", 1);
+            g_InBlocksSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_InBlocksSP->setUniform3f("uColor", glm::vec3(0.33f, 0.66f, 0.99f));
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
 
             g_CubeVAO->unbind();
-            g_EnvMappingSP->unbind();
+            g_InBlocksSP->unbind();
         }
-    }
-
-    // Draw skybox.
-    //
-    // This way, the depth buffer is completely filled with all the scene's depth values so we only
-    // have to render the skybox's fragments wherever the early depth test passes, greatly reducing
-    // the number of fragment shader calls.
-    //
-    {
-        glDepthFunc(GL_LEQUAL);
-
-        g_CubeMapSP->bind();
-        g_SkyboxVAO->bind();
-
-        // We can remove the translation section of transformation matrices by taking
-        // the upper-left 3x3 matrix of the 4x4 matrix.
-        //
-        glm::mat4 viewMatrix = glm::mat4(glm::mat3(g_MainCamera->getViewMatrix()));
-
-        g_CubeMapSP->setUniformMatrix4fv("uViewMatrix", viewMatrix);
-        g_CubeMapSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-        g_CubeMapSP->setUniform1i("uCubeMap", 0);
-        g_CubeMapSP->setUniform1i("uTrickDepthBuffer", 1);
-
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        g_CubeMapSP->unbind();
-        g_SkyboxVAO->unbind();
-
-        glDepthFunc(GL_LESS);
     }
 }
 

@@ -112,6 +112,20 @@ void ShaderProgram::setUniformMatrix4fv(const char* uniformName, const glm::mat4
 	}
 }
 
+void ShaderProgram::setUniformBlock(const char* uniformBlockName, const int bindingPoint)
+{
+	int uniformBlockLocation = glGetUniformBlockIndex(m_ID, uniformBlockName);
+
+	if (uniformBlockLocation > -1)
+	{
+		glUniformBlockBinding(m_ID, uniformBlockLocation, bindingPoint);
+	}
+	else
+	{
+		std::cout << "[ERROR] SHADER PROGRAM: Failed to get location of uniform block \"" << uniformBlockName << "\"" << std::endl;
+	}
+}
+
 const std::string ShaderProgram::readShaderSource(const char* filepath)
 {
 	std::ifstream fileStream(filepath);

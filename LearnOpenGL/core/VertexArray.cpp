@@ -3,7 +3,10 @@
 VertexArray::VertexArray() : m_ID()
 {
 	glGenVertexArrays(1, &m_ID);
-	glBindVertexArray(m_ID);
+
+	// There is no reason to bind the VAO now...
+	// 
+	// glBindVertexArray(m_ID);
 }
 
 VertexArray::~VertexArray()

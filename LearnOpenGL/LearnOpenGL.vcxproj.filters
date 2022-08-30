@@ -45,6 +45,9 @@
     <ClCompile Include="util\CubeMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="core\UniformBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core\VertexBuffer.h">
@@ -71,6 +74,9 @@
     <ClInclude Include="util\CubeMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="core\UniformBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="scripts\2_simple_texturing_vs.glsl" />
@@ -86,5 +92,6 @@
     <None Include="scripts\6_cube_map_vs.glsl" />
     <None Include="scripts\7_enviroment_mapping_vs.glsl" />
     <None Include="scripts\7_enviroment_mapping_fs.glsl" />
+    <None Include="scripts\8_interface_blocks_vs.glsl" />
   </ItemGroup>
 </Project>

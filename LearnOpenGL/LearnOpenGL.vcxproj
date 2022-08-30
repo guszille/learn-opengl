@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="core\FrameBuffer.cpp" />
+    <ClCompile Include="core\UniformBuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="core\ElementBuffer.cpp" />
     <ClCompile Include="core\ShaderProgram.cpp" />
@@ -162,6 +163,7 @@
     <ClInclude Include="core\ElementBuffer.h" />
     <ClInclude Include="core\FrameBuffer.h" />
     <ClInclude Include="core\ShaderProgram.h" />
+    <ClInclude Include="core\UniformBuffer.h" />
     <ClInclude Include="core\VertexArray.h" />
     <ClInclude Include="core\VertexBuffer.h" />
     <ClInclude Include="util\Camera.h" />
@@ -182,6 +184,7 @@
     <None Include="scripts\6_cube_map_vs.glsl" />
     <None Include="scripts\7_enviroment_mapping_fs.glsl" />
     <None Include="scripts\7_enviroment_mapping_vs.glsl" />
+    <None Include="scripts\8_interface_blocks_vs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

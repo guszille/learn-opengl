@@ -25,6 +25,8 @@ public:
 	void setUniform4f(const char* uniformName, const glm::vec4& data);
 	void setUniformMatrix4fv(const char* uniformName, const glm::mat4& data);
 
+	void setUniformBlock(const char* uniformBlockName, const int bindingPoint);
+
 private:
 	unsigned int m_ID;
 
