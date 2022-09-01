@@ -185,6 +185,9 @@
     <None Include="scripts\7_enviroment_mapping_fs.glsl" />
     <None Include="scripts\7_enviroment_mapping_vs.glsl" />
     <None Include="scripts\8_interface_blocks_vs.glsl" />
+    <None Include="scripts\9_cooking_primitives_fs.glsl" />
+    <None Include="scripts\9_cooking_primitives_vs.glsl" />
+    <None Include="scripts\9_cooking_primitives_gs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

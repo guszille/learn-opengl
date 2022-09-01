@@ -46,7 +46,7 @@ int g_DrawMode    = GL_FILL;
 
 glm::mat4 g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 
-ShaderProgram* g_InBlocksSP;
+ShaderProgram* g_CookingPrimSP;
 
 Camera*        g_MainCamera;
 
@@ -55,58 +55,65 @@ VertexBuffer*  g_CubeVBO;
 
 UniformBuffer* g_MatricesUB;
 
+Texture*       g_ContainerTex;
+
 void setup()
 {
     float cubeVertices[] = {
-        // positions         
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
+        // back face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // bottom-left
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // bottom-right    
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // bottom-left
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
 
-        -0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
+        // front face
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // top-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
 
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
+        // left face
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-left
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right
 
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
+        // right face
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right    
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
 
-        -0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f, -0.5f,
-         0.5f, -0.5f,  0.5f,
-         0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f,  0.5f,
-        -0.5f, -0.5f, -0.5f,
+        // bottom face
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // top-left
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right
 
-        -0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f, -0.5f,
-         0.5f,  0.5f,  0.5f,
-         0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f,  0.5f,
-        -0.5f,  0.5f, -0.5f
+        // top face
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right 
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // bottom-left   
     };
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
-    g_InBlocksSP = new ShaderProgram("scripts/8_interface_blocks_vs.glsl", "scripts/1_basic_fs.glsl");
+    g_CookingPrimSP = new ShaderProgram("scripts/9_cooking_primitives_vs.glsl", "scripts/9_cooking_primitives_gs.glsl", "scripts/9_cooking_primitives_fs.glsl");
 
-    g_InBlocksSP->setUniformBlock("uMatrices", 0);
+    g_CookingPrimSP->setUniformBlock("uMatrices", 0);
 
     g_CubeVAO = new VertexArray();
     g_CubeVBO = new VertexBuffer(cubeVertices, sizeof(cubeVertices));
@@ -114,7 +121,8 @@ void setup()
     g_CubeVAO->bind();
     g_CubeVBO->bind();
 
-    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(0));
+    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
+    g_CubeVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     // Unbind VAO before another buffer.
     g_CubeVAO->unbind();
@@ -123,6 +131,10 @@ void setup()
     g_MatricesUB = new UniformBuffer(2 * sizeof(glm::mat4));
 
     g_MatricesUB->link(0);
+
+    g_ContainerTex = new Texture("assets/textures/container.png");
+
+    g_ContainerTex->bind(0);
 }
 
 /*
@@ -133,7 +145,7 @@ void setup()
  */
 void render()
 {
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClearColor(0.33f, 0.66f, 0.99f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Update Uniform Buffer.
@@ -150,18 +162,19 @@ void render()
     {
         // Cube.
         {
-            g_InBlocksSP->bind();
+            g_CookingPrimSP->bind();
             g_CubeVAO->bind();
 
             glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-            g_InBlocksSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-            g_InBlocksSP->setUniform3f("uColor", glm::vec3(0.33f, 0.66f, 0.99f));
+            g_CookingPrimSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_CookingPrimSP->setUniform1f("uTime", (float)glfwGetTime());
+            g_CookingPrimSP->setUniform1f("uTexture", 0);
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
 
             g_CubeVAO->unbind();
-            g_InBlocksSP->unbind();
+            g_CookingPrimSP->unbind();
         }
     }
 }

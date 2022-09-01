@@ -14,6 +14,7 @@ class ShaderProgram
 {
 public:
 	ShaderProgram(const char* vertexShaderFilepath, const char* fragmentShaderFilepath);
+	ShaderProgram(const char* vertexShaderFilepath, const char* geometryShaderFilepath, const char* fragmentShaderFilepath);
 	~ShaderProgram();
 
 	void bind();

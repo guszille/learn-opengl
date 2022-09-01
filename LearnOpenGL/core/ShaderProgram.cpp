@@ -27,6 +27,36 @@ ShaderProgram::ShaderProgram(const char* vertexShaderFilepath, const char* fragm
 	glDeleteShader(fragmentShaderID);
 }
 
+ShaderProgram::ShaderProgram(const char* vertexShaderFilepath, const char* geometryShaderFilepath, const char* fragmentShaderFilepath) : m_ID()
+{
+	int success;
+	char infoLog[512];
+
+	unsigned int vertexShaderID = createShader(vertexShaderFilepath, GL_VERTEX_SHADER);
+	unsigned int geometryShaderID = createShader(geometryShaderFilepath, GL_GEOMETRY_SHADER);
+	unsigned int fragmentShaderID = createShader(fragmentShaderFilepath, GL_FRAGMENT_SHADER);
+
+	m_ID = glCreateProgram();
+
+	glAttachShader(m_ID, vertexShaderID);
+	glAttachShader(m_ID, geometryShaderID);
+	glAttachShader(m_ID, fragmentShaderID);
+
+	glLinkProgram(m_ID);
+	glGetProgramiv(m_ID, GL_LINK_STATUS, &success);
+
+	if (!success)
+	{
+		glGetProgramInfoLog(m_ID, 512, NULL, infoLog);
+
+		std::cout << "[ERROR] SHADER PROGRAM: Linkage failed!\n" << infoLog << std::endl;
+	}
+
+	glDeleteShader(vertexShaderID);
+	glDeleteShader(geometryShaderID);
+	glDeleteShader(fragmentShaderID);
+}
+
 ShaderProgram::~ShaderProgram()
 {
 	glDeleteProgram(m_ID);
