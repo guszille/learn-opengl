@@ -48,6 +48,12 @@
     <ClCompile Include="core\UniformBuffer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="util\object\Model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="util\object\Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core\VertexBuffer.h">
@@ -77,6 +83,12 @@
     <ClInclude Include="core\UniformBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="util\object\Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="util\object\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="scripts\2_simple_texturing_vs.glsl" />
@@ -96,5 +108,6 @@
     <None Include="scripts\9_cooking_primitives_gs.glsl" />
     <None Include="scripts\9_cooking_primitives_vs.glsl" />
     <None Include="scripts\9_cooking_primitives_fs.glsl" />
+    <None Include="scripts\10_model_loading_fs.glsl" />
   </ItemGroup>
 </Project>

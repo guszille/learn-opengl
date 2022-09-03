@@ -70,7 +70,7 @@ void Texture::bind(int unit)
 	}
 	else
 	{
-		std::cout << "[ERROR] TEXTURE: Failed to bind texture in " << unit << " unit" << std::endl;
+		std::cout << "[ERROR] TEXTURE: Failed to bind texture in " << unit << " unit." << std::endl;
 	}
 }
 
