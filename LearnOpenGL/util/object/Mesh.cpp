@@ -73,3 +73,8 @@ void Mesh::draw(ShaderProgram* shaderProgram)
 	
 	shaderProgram->unbind();
 }
+
+unsigned int Mesh::getVAO() const
+{
+	return m_VAO;
+}

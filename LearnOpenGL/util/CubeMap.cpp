@@ -16,8 +16,25 @@ CubeMap::CubeMap(const char* filepath, const std::array<const char*, 6>& faces)
 		buff.append("/");
 		buff.append(faces[i]);
 
+		int format = GL_RED; // Default format.
 		int width, height, colorChannels;
 		unsigned char* data = stbi_load(buff.c_str(), &width, &height, &colorChannels, 0);
+
+		switch (colorChannels)
+		{
+		case 3:
+			format = GL_RGB;
+			break;
+
+		case 4:
+			format = GL_RGBA;
+			break;
+
+		default:
+			std::cout << "[ERROR] CUBEMAP: Texture format not supported." << std::endl;
+
+			break;
+		}
 
 		// Texture Target					Orientation
 		// 
@@ -30,7 +47,7 @@ CubeMap::CubeMap(const char* filepath, const std::array<const char*, 6>& faces)
 		//
 		if (data)
 		{
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 		}
 		else
 		{

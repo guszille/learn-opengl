@@ -17,6 +17,16 @@ void Model::draw(ShaderProgram* shaderProgram)
 	}
 }
 
+const std::vector<Mesh>& Model::getMeshes()
+{
+	return m_Meshes;
+}
+
+const std::vector<MeshTexture>& Model::getLoadedTextures()
+{
+	return m_LoadedTextures;
+}
+
 void Model::loadModel(const std::string& filepath)
 {
 	Assimp::Importer importer;

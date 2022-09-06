@@ -1,6 +1,6 @@
 #include "VertexBuffer.h"
 
-VertexBuffer::VertexBuffer(const float* vertices, const int size) : m_ID()
+VertexBuffer::VertexBuffer(const void* vertices, const int size) : m_ID()
 {
 	glGenBuffers(1, &m_ID);
 	glBindBuffer(GL_ARRAY_BUFFER, m_ID);

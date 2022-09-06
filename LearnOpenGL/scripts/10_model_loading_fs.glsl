@@ -159,12 +159,11 @@ void main()
         // 1. Directional light.
         result += calcDirectionalLight(uDirectionalLight);
 
-        // 2. Point lights. (DEACTIVATED)
-        //
-        // for(int i = 0; i < N_POINT_LIGHTS; i++)
-        // {
-        //     result += calcPointLight(uPointLights[i]);
-        // }
+        // 2. Point lights        
+        for(int i = 0; i < N_POINT_LIGHTS; i++)
+        {
+            result += calcPointLight(uPointLights[i]);
+        }
 
         // 3. Spot light.
         result += calcSpotLight(uSpotLight);

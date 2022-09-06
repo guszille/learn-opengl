@@ -35,6 +35,8 @@ public:
 
     void draw(ShaderProgram* shaderProgram);
 
+    unsigned int getVAO() const;
+
     std::vector<Vertex> m_Vertices;
     std::vector<unsigned int> m_Indices;
     std::vector<MeshTexture> m_Textures;

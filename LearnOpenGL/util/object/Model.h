@@ -27,6 +27,9 @@ public:
 
 	void draw(ShaderProgram* shaderProgram);
 
+	const std::vector<Mesh>& getMeshes();
+	const std::vector<MeshTexture>& getLoadedTextures();
+
 private:
 	std::vector<Mesh> m_Meshes;
 	std::vector<MeshTexture> m_LoadedTextures;
