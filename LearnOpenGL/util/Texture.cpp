@@ -1,12 +1,12 @@
 #include "Texture.h"
 
-Texture::Texture(const char* filepath)
+Texture::Texture(const char* filepath, const bool gammaCorrection)
 	: m_ID(), m_Width(), m_Height(), m_ColorChannels()
 {
 	stbi_set_flip_vertically_on_load(true);
 
 	unsigned char* data = stbi_load(filepath, &m_Width, &m_Height, &m_ColorChannels, 0);
-	int format = GL_RED; // Default format.
+	int internalFormat = GL_RED, format = GL_RED; // Default format.
 
 	// WARNING: We are only expecting an image with 3 or 4 color channels.
 	//			Any other format may generate some OpenGL error.
@@ -20,6 +20,7 @@ Texture::Texture(const char* filepath)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
+		internalFormat = gammaCorrection ? GL_SRGB : GL_RGB;
 		format = GL_RGB;
 
 		break;
@@ -28,6 +29,7 @@ Texture::Texture(const char* filepath)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+		internalFormat = gammaCorrection ? GL_SRGB_ALPHA : GL_RGBA;
 		format = GL_RGBA;
 
 		break;
@@ -43,7 +45,7 @@ Texture::Texture(const char* filepath)
 
 	if (data)
 	{
-		glTexImage2D(GL_TEXTURE_2D, 0, format, m_Width, m_Height, 0, format, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_Width, m_Height, 0, format, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else

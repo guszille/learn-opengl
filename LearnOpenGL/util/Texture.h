@@ -13,7 +13,7 @@
 class Texture
 {
 public:
-	Texture(const char* filepath);
+	Texture(const char* filepath, const bool gammaCorrection = false);
 	~Texture();
 
 	void bind(int unit);

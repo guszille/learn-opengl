@@ -3,16 +3,16 @@
 #include <iostream>
 #include <string>
 
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
-#include <imgui/imgui.h>
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_opengl3.h>
 
 #include "core/VertexArray.h"
 #include "core/VertexBuffer.h"
@@ -55,218 +55,48 @@ int g_ActivateLights = 0;
 glm::mat4  g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 1000.0f);
 glm::mat4* g_ModelMatrices;
 
-ShaderProgram* g_PhongLightingModelSP;
-ShaderProgram* g_InstancingModelsSP;
-ShaderProgram* g_CubeMapSP;
-
 Camera*        g_MainCamera;
 
-Model*         g_PlanetModel;
-Model*         g_RockModel;
+ShaderProgram* g_BlinnPhongLightingModelSP;
 
-VertexBuffer*  g_ModelMatrixVBO;
+VertexArray*   g_PlaneVAO;
+VertexBuffer*  g_PlaneVBO;
 
-CubeMap*       g_SkyboxCM;
-
-VertexArray*   g_SkyboxVAO;
-VertexBuffer*  g_SkyboxVBO;
-
-const int      g_AmountOfRocks = 100000;
-
-void genModelMatrices(unsigned int amount)
-{
-    g_ModelMatrices = new glm::mat4[amount];
-
-    srand((unsigned int)glfwGetTime());
-
-    float radius = 150.0f;
-    float offset = 25.0f;
-
-    for (unsigned int i = 0; i < amount; i++)
-    {
-        glm::mat4 model = glm::mat4(1.0f);
-
-        // 1. Translation: displace along circle with 'radius' in range [-offset, offset].
-        float angle = (float)i / (float)amount * 360.0f;
-        float d1 = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
-        float d2 = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
-        float d3 = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
-
-        float x = sin(angle) * radius + d1;
-        float y = d2 * 0.4f; // Keep height of asteroid field smaller compared to width of x and z.
-        float z = cos(angle) * radius + d3;
-
-        model = glm::translate(model, glm::vec3(x, y, z));
-
-        // 2. Scale: between 0.05 and 0.25f.
-        float scale = (float)((rand() % 20) / 100.0f + 0.05f);
-
-        model = glm::scale(model, glm::vec3(scale));
-
-        // 3. Rotation: add random rotation around a (semi)randomly picked rotation axis vector.
-        float rotationAngle = (float)((rand() % 360));
-
-        model = glm::rotate(model, rotationAngle, glm::vec3(0.4f, 0.6f, 0.8f));
-
-        // 4. Now add to list of matrices.
-        g_ModelMatrices[i] = model;
-    }
-}
+Texture*       g_WoodTex;
 
 void setup()
 {
-    std::size_t vec4Size = sizeof(glm::vec4);
+    float planeVertices[] = {
+        // positions            // normals         // texture coords
+         10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
+        -10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
+        -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
 
-    float skyboxVertices[] = {
-        // positions and texture coords         
-        -1.0f,  1.0f, -1.0f,
-        -1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
-
-        -1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f, -1.0f,
-         1.0f,  1.0f,  1.0f,
-         1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
-
-        -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f, -1.0f,
-         1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-         1.0f, -1.0f,  1.0f
+         10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
+        -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
+         10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,  10.0f, 10.0f
     };
-
-    std::array<const char*, 6> cubeMapFaces = {"right.png", "left.png", "top.png", "bottom.png", "front.png", "back.png"};
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
-    g_PhongLightingModelSP = new ShaderProgram("scripts/3_phong_lighting_model_vs.glsl", "scripts/10_model_loading_fs.glsl");
-    g_InstancingModelsSP = new ShaderProgram("scripts/11_instancing_models_vs.glsl", "scripts/10_model_loading_fs.glsl");
-    g_CubeMapSP = new ShaderProgram("scripts/6_cube_map_vs.glsl", "scripts/6_cube_map_fs.glsl");
+    g_BlinnPhongLightingModelSP = new ShaderProgram("scripts/3_blinn_phong_lighting_model_vs.glsl", "scripts/3_blinn_phong_lighting_model_fs.glsl");
 
-    g_PlanetModel = new Model("assets/objects/planet/planet.obj");
-    g_RockModel = new Model("assets/objects/rock/rock.obj");
+    g_PlaneVAO = new VertexArray();
+    g_PlaneVBO = new VertexBuffer(planeVertices, sizeof(planeVertices));
 
-    genModelMatrices(g_AmountOfRocks);
+    g_PlaneVAO->bind();
+    g_PlaneVBO->bind();
 
-    g_ModelMatrixVBO = new VertexBuffer(&g_ModelMatrices[0], g_AmountOfRocks * sizeof(glm::mat4));
+    g_PlaneVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0));
+    g_PlaneVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    g_PlaneVAO->setVertexAttribute(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 
-    g_ModelMatrixVBO->bind();
+    g_PlaneVAO->unbind(); // Unbind VAO before another buffer.
+    g_PlaneVBO->unbind();
 
-    for (const Mesh& mesh : g_RockModel->getMeshes())
-    {
-        glBindVertexArray(mesh.getVAO());
+    g_WoodTex = new Texture("assets/textures/wood.png", true);
 
-        glEnableVertexAttribArray(3);
-        glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(0));
-        glEnableVertexAttribArray(4);
-        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(1 * vec4Size));
-        glEnableVertexAttribArray(5);
-        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(2 * vec4Size));
-        glEnableVertexAttribArray(6);
-        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, 4 * vec4Size, (void*)(3 * vec4Size));
-
-        glVertexAttribDivisor(3, 1);
-        glVertexAttribDivisor(4, 1);
-        glVertexAttribDivisor(5, 1);
-        glVertexAttribDivisor(6, 1);
-
-        glBindVertexArray(0);
-    }
-
-    g_ModelMatrixVBO->unbind();
-
-    g_SkyboxCM = new CubeMap("assets/textures/skybox_space", cubeMapFaces);
-
-    g_SkyboxCM->bind(8); // Setting unit value to prevent conflict with models textures.
-
-    g_SkyboxVAO = new VertexArray();
-    g_SkyboxVBO = new VertexBuffer(skyboxVertices, sizeof(skyboxVertices));
-
-    g_SkyboxVAO->bind();
-    g_SkyboxVBO->bind();
-    g_SkyboxVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(0));
-    g_SkyboxVAO->unbind(); // Unbind VAO before another buffer.
-    g_SkyboxVBO->unbind();
-}
-
-void configureShader(ShaderProgram* shaderProgram)
-{
-    glm::vec3 pointLightPositions[] = {
-        glm::vec3(-10.0f, 0.0f, -10.0f),
-        glm::vec3(-10.0f, 0.0f,  10.0f),
-        glm::vec3( 10.0f, 0.0f, -10.0f),
-        glm::vec3( 10.0f, 0.0f,  10.0f)
-    };
-
-    shaderProgram->bind();
-
-    // Defining general uniforms.
-    shaderProgram->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-    shaderProgram->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-
-    shaderProgram->setUniform1i("uActivateLights", g_ActivateLights);
-
-    // Defining directional light uniorms.
-    shaderProgram->setUniform3f("uDirectionalLight.direction", glm::vec3(-0.2f, -1.0f, -0.3f));
-    shaderProgram->setUniform3f("uDirectionalLight.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
-    shaderProgram->setUniform3f("uDirectionalLight.diffuse", glm::vec3(0.2f, 0.2f, 0.2f));
-    shaderProgram->setUniform3f("uDirectionalLight.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-
-    // Defining point lights uniforms.
-    for (unsigned int i = 0; i < 4; i++)
-    {
-        shaderProgram->setUniform3f(("uPointLights[" + std::to_string(i) + "].position").c_str(), pointLightPositions[i]);
-        shaderProgram->setUniform3f(("uPointLights[" + std::to_string(i) + "].ambient").c_str(), glm::vec3(0.05f, 0.05f, 0.05f));
-        shaderProgram->setUniform3f(("uPointLights[" + std::to_string(i) + "].diffuse").c_str(), glm::vec3(0.8f, 0.8f, 0.8f));
-        shaderProgram->setUniform3f(("uPointLights[" + std::to_string(i) + "].specular").c_str(), glm::vec3(1.0f, 1.0f, 1.0f));
-        shaderProgram->setUniform1f(("uPointLights[" + std::to_string(i) + "].constant").c_str(), 1.0f);
-        shaderProgram->setUniform1f(("uPointLights[" + std::to_string(i) + "].linear").c_str(), 0.09f);
-        shaderProgram->setUniform1f(("uPointLights[" + std::to_string(i) + "].quadratic").c_str(), 0.032f);
-    }
-
-    // Defining spot light uniforms.
-    shaderProgram->setUniform3f("uSpotLight.position", g_MainCamera->getPosition());
-    shaderProgram->setUniform3f("uSpotLight.direction", g_MainCamera->getDirection());
-    shaderProgram->setUniform3f("uSpotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
-    shaderProgram->setUniform3f("uSpotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
-    shaderProgram->setUniform3f("uSpotLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-    shaderProgram->setUniform1f("uSpotLight.constant", 1.0f);
-    shaderProgram->setUniform1f("uSpotLight.linear", 0.045f);
-    shaderProgram->setUniform1f("uSpotLight.quadratic", 0.0075f);
-    shaderProgram->setUniform1f("uSpotLight.cutOff", glm::cos(glm::radians(12.5f)));
-    shaderProgram->setUniform1f("uSpotLight.outerCutOff", glm::cos(glm::radians(17.5f)));
-
-    // Defining common material components.
-    shaderProgram->setUniform1f("uMaterial.shininess", 64.0f);
-
-    shaderProgram->unbind();
+    g_WoodTex->bind(0);
 }
 
 /*
@@ -280,71 +110,46 @@ void render()
     glClearColor(0.15f, 0.30f, 0.45f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Setup shaders.
+    // Setup common shader uniforms.
     {
-        configureShader(g_PhongLightingModelSP);
-        configureShader(g_InstancingModelsSP);
+        g_BlinnPhongLightingModelSP->bind();
+
+        // Defining general uniforms.
+        g_BlinnPhongLightingModelSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+        g_BlinnPhongLightingModelSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+        g_BlinnPhongLightingModelSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
+
+        // Defining light uniorms.
+        g_BlinnPhongLightingModelSP->setUniform3f("uLight.ambient", glm::vec3(0.1f, 0.1f, 0.1f));
+        g_BlinnPhongLightingModelSP->setUniform3f("uLight.diffuse", glm::vec3(0.65f, 0.65f, 0.65f));
+        g_BlinnPhongLightingModelSP->setUniform3f("uLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+        g_BlinnPhongLightingModelSP->setUniform3f("uLight.position", glm::vec3(0.0f, 0.0f, 0.0f));
+
+        g_BlinnPhongLightingModelSP->unbind();
     }
 
     // Draw objects.
     {
-        glEnable(GL_CULL_FACE); // Enable face culling only for rendering closed shapes.
+        // glEnable(GL_CULL_FACE); // Enable face culling only for rendering closed shapes.
+
+        g_BlinnPhongLightingModelSP->bind();
+        g_PlaneVAO->bind();
 
         glm::mat4 modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(2.5f, 2.5f, 2.5f));
 
-        g_PhongLightingModelSP->bind();
-        g_PhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-        g_PhongLightingModelSP->unbind();
+        g_BlinnPhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
 
-        // Draw planet.
-        g_PlanetModel->draw(g_PhongLightingModelSP);
+        // Defining material uniforms.
+        g_BlinnPhongLightingModelSP->setUniform1i("uMaterial.diffuse", 0);
+        g_BlinnPhongLightingModelSP->setUniform1i("uMaterial.specular", 0);
+        g_BlinnPhongLightingModelSP->setUniform1f("uMaterial.shininess", 32.0f);
 
-        // Draw rocks.
-        {
-            g_InstancingModelsSP->bind();
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
-            for (const Mesh& mesh : g_RockModel->getMeshes())
-            {
-                glBindVertexArray(mesh.getVAO());
-                glDrawElementsInstanced(GL_TRIANGLES, mesh.m_Indices.size(), GL_UNSIGNED_INT, 0, g_AmountOfRocks);
-                glBindVertexArray(0);
-            }
+        g_PlaneVAO->unbind();
+        g_BlinnPhongLightingModelSP->unbind();
 
-            g_InstancingModelsSP->unbind();
-        }
-
-        glDisable(GL_CULL_FACE);
-    }
-
-    // Draw skybox.
-    //
-    // This way, the depth buffer is completely filled with all the scene's depth values so we only
-    // have to render the skybox's fragments wherever the early depth test passes, greatly reducing
-    // the number of fragment shader calls.
-    //
-    {
-        glDepthFunc(GL_LEQUAL);
-
-        g_CubeMapSP->bind();
-        g_SkyboxVAO->bind();
-
-        // We can remove the translation section of transformation matrices by taking
-        // the upper-left 3x3 matrix of the 4x4 matrix.
-        //
-        glm::mat4 viewMatrix = glm::mat4(glm::mat3(g_MainCamera->getViewMatrix()));
-
-        g_CubeMapSP->setUniformMatrix4fv("uViewMatrix", viewMatrix);
-        g_CubeMapSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-        g_CubeMapSP->setUniform1i("uCubeMap", 8);
-        g_CubeMapSP->setUniform1i("uTrickDepthBuffer", 1);
-
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-        g_CubeMapSP->unbind();
-        g_SkyboxVAO->unbind();
-
-        glDepthFunc(GL_LESS);
+        // glDisable(GL_CULL_FACE);
     }
 
     // Draw ImGui interface/frame.
@@ -357,7 +162,6 @@ void render()
         {
             ImGui::Begin("General");
             ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
-            ImGui::Text("Around 57 million VPS");
             ImGui::End();
         }
 
@@ -415,9 +219,8 @@ int main()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.WantCaptureMouse = true; // FIXME: Forcing flag value to try fixing focus ImGui/GLFW problem.
 
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable geyboard controls.
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable keyboard controls.
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable gamepad controls.
 
     ImGui::StyleColorsDark();
@@ -430,10 +233,16 @@ int main()
     glViewport(0, 0, g_WindowWidth, g_WindowHeight);
 
     /* Enable OpenGL features */
-    glEnable(GL_DEPTH_TEST);   // Enable depth test.
-    glEnable(GL_BLEND);        // Enable blending.
-    glEnable(GL_MULTISAMPLE);  // Enable multisampling.
-    // glEnable(GL_CULL_FACE); // Enable face culling only for rendering closed shapes.
+    glEnable(GL_DEPTH_TEST);       // Enable depth test.
+    glEnable(GL_BLEND);            // Enable blending.
+    glEnable(GL_MULTISAMPLE);      // Enable multisampling.
+    glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
+    // (...)                       // Enable face culling only for rendering closed shapes.
+
+    // WARNING:
+    //
+    // After enabling GL_FRAMEBUFFER_SRGB, OpenGL automatically performs gamma correction
+    // after each fragment shader run to all subsequent framebuffers, including the default framebuffer.
 
     /* Configure depth buffer */
     glDepthFunc(GL_LESS);
@@ -441,7 +250,7 @@ int main()
 
     /* Configure blending */
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Allows us to set the source and destination factor values of the blend equation.
-    // We can also do more stuff with "glBlendColor", "glBlendFuncSeparate" and "glBlendEquation" functions. 
+                                                       // We can also do more stuff with "glBlendColor", "glBlendFuncSeparate" and "glBlendEquation" functions. 
 
     /* Configure face culling */
     glFrontFace(GL_CCW); // Consider counter-clockwise faces as front faces.
@@ -454,6 +263,8 @@ int main()
     glfwSetScrollCallback(window, scrollCallback);
 
     setup();
+
+    io.WantCaptureMouse = true; // FIXME: Forcing flag value to try fixing focus ImGui/GLFW problem.
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -537,7 +348,7 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
         {
             g_CameraSpeed = std::min(g_CameraSpeed + 2.5f, 25.0f);
         }
-        else
+        else // Implies "key == GLFW_KEY_M".
         {
             g_CameraSpeed = std::max(g_CameraSpeed - 2.5f, 2.5f);
         }

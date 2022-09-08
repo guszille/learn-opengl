@@ -193,11 +193,14 @@
     <None Include="scripts\10_model_loading_fs.glsl" />
     <None Include="scripts\11_instancing_models_vs.glsl" />
     <None Include="scripts\1_basic_fs.glsl" />
+    <None Include="scripts\3_blinn_phong_lighting_model_fs.glsl" />
+    <None Include="scripts\3_blinn_phong_lighting_model_vs.glsl" />
     <None Include="scripts\3_phong_lighting_model_fs.glsl" />
     <None Include="scripts\1_basic_vs.glsl" />
     <None Include="scripts\3_phong_lighting_model_vs.glsl" />
     <None Include="scripts\2_simple_texturing_fs.glsl" />
     <None Include="scripts\2_simple_texturing_vs.glsl" />
+    <None Include="scripts\4_bplm_fs_multiple_lc.glsl" />
     <None Include="scripts\4_plm_fs_multiple_lc.glsl" />
     <None Include="scripts\5_screen_quad_fs.glsl" />
     <None Include="scripts\5_screen_quad_vs.glsl" />
