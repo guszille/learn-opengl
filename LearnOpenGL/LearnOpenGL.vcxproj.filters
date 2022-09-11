@@ -75,6 +75,9 @@
     <ClCompile Include="vendor\libs\imgui\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="util\DepthMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core\VertexBuffer.h">
@@ -110,6 +113,9 @@
     <ClInclude Include="util\object\Mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="util\DepthMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="scripts\2_simple_texturing_vs.glsl" />
@@ -134,5 +140,9 @@
     <None Include="scripts\3_blinn_phong_lighting_model_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_vs.glsl" />
     <None Include="scripts\4_bplm_fs_multiple_lc.glsl" />
+    <None Include="scripts\12_shadow_map_vs.glsl" />
+    <None Include="scripts\12_shadow_map_fs.glsl" />
+    <None Include="scripts\13_advanced_lighting_vs.glsl" />
+    <None Include="scripts\13_advanced_lighting_fs.glsl" />
   </ItemGroup>
 </Project>

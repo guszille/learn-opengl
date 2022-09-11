@@ -164,6 +164,7 @@
     <ClCompile Include="core\VertexBuffer.cpp" />
     <ClCompile Include="util\Camera.cpp" />
     <ClCompile Include="util\CubeMap.cpp" />
+    <ClCompile Include="util\DepthMap.cpp" />
     <ClCompile Include="util\object\Mesh.cpp" />
     <ClCompile Include="util\object\Model.cpp" />
     <ClCompile Include="util\Texture.cpp" />
@@ -185,6 +186,7 @@
     <ClInclude Include="core\VertexBuffer.h" />
     <ClInclude Include="util\Camera.h" />
     <ClInclude Include="util\CubeMap.h" />
+    <ClInclude Include="util\DepthMap.h" />
     <ClInclude Include="util\object\Mesh.h" />
     <ClInclude Include="util\object\Model.h" />
     <ClInclude Include="util\Texture.h" />
@@ -192,6 +194,10 @@
   <ItemGroup>
     <None Include="scripts\10_model_loading_fs.glsl" />
     <None Include="scripts\11_instancing_models_vs.glsl" />
+    <None Include="scripts\12_shadow_map_fs.glsl" />
+    <None Include="scripts\12_shadow_map_vs.glsl" />
+    <None Include="scripts\13_advanced_lighting_fs.glsl" />
+    <None Include="scripts\13_advanced_lighting_vs.glsl" />
     <None Include="scripts\1_basic_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_vs.glsl" />

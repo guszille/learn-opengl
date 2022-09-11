@@ -24,6 +24,7 @@
 #include "util/Camera.h"
 #include "util/Texture.h"
 #include "util/CubeMap.h"
+#include "util/DepthMap.h"
 
 #include "util/object/Model.h"
 
@@ -52,15 +53,23 @@ int g_CursorMode     = GLFW_CURSOR_DISABLED;
 int g_DrawMode       = GL_FILL;
 int g_ActivateLights = 0;
 
-glm::mat4  g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 1000.0f);
-glm::mat4* g_ModelMatrices;
-
+glm::mat4      g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 1000.0f);
 Camera*        g_MainCamera;
 
-ShaderProgram* g_BlinnPhongLightingModelSP;
+ShaderProgram* g_ShadowMapSP;
+DepthMap*      g_ShadowMapDM;
+float          g_ShadowMapNear = 1.0f;
+float          g_ShadowMapFar = 7.5f;
+int            g_ShadowMapWidth = 2048;
+int            g_ShadowMapHeight = 2048;
+
+ShaderProgram* g_AdvancedLightingSP;
 
 VertexArray*   g_PlaneVAO;
 VertexBuffer*  g_PlaneVBO;
+
+VertexArray*   g_CubeVAO;
+VertexBuffer*  g_CubeVBO;
 
 Texture*       g_WoodTex;
 
@@ -68,18 +77,66 @@ void setup()
 {
     float planeVertices[] = {
         // positions            // normals         // texture coords
-         10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
-        -10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
-        -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
+         25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+        -25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
+        -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
 
-         10.0f, -0.5f,  10.0f,  0.0f, 1.0f, 0.0f,  10.0f,  0.0f,
-        -10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,   0.0f, 10.0f,
-         10.0f, -0.5f, -10.0f,  0.0f, 1.0f, 0.0f,  10.0f, 10.0f
+         25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+        -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+         25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f
+    };
+
+    float cubeVertices[] = {
+        // back face
+        -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+         1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+         1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right     
+         1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+        -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+        -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+        // front face
+        -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+         1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
+         1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+         1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+        -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
+        -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+        // left face
+        -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+        -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
+        -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+        -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+        -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+        -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+        // right face
+         1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+         1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+         1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right 
+         1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+         1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+         1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left 
+        // bottom face
+        -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+         1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
+         1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+         1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+        -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+        -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+        // top face
+        -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+         1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+         1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right 
+         1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+        -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+        -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left     
     };
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
-    g_BlinnPhongLightingModelSP = new ShaderProgram("scripts/3_blinn_phong_lighting_model_vs.glsl", "scripts/3_blinn_phong_lighting_model_fs.glsl");
+    g_ShadowMapSP = new ShaderProgram("scripts/12_shadow_map_vs.glsl", "scripts/12_shadow_map_fs.glsl");
+    g_ShadowMapDM = new DepthMap(g_ShadowMapWidth, g_ShadowMapHeight);
+    
+    g_AdvancedLightingSP = new ShaderProgram("scripts/13_advanced_lighting_vs.glsl", "scripts/13_advanced_lighting_fs.glsl");
 
     g_PlaneVAO = new VertexArray();
     g_PlaneVBO = new VertexBuffer(planeVertices, sizeof(planeVertices));
@@ -94,9 +151,69 @@ void setup()
     g_PlaneVAO->unbind(); // Unbind VAO before another buffer.
     g_PlaneVBO->unbind();
 
+    g_CubeVAO = new VertexArray();
+    g_CubeVBO = new VertexBuffer(cubeVertices, sizeof(cubeVertices));
+
+    g_CubeVAO->bind();
+    g_CubeVBO->bind();
+
+    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0));
+    g_CubeVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    g_CubeVAO->setVertexAttribute(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+
+    g_CubeVAO->unbind(); // Unbind VAO before another buffer.
+    g_CubeVBO->unbind();
+
     g_WoodTex = new Texture("assets/textures/wood.png", true);
 
-    g_WoodTex->bind(0);
+    // Binding textures at the end to prevent conflicts.
+    g_ShadowMapDM->bindDepthBuffer(0);
+    g_WoodTex->bind(1);
+}
+
+/*
+ * Call this function inside the context of an active shader program. 
+ */
+void drawScene(ShaderProgram* shaderProgram, bool cullBackFaces = true)
+{
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
+
+    // Draw floor.
+    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+    g_PlaneVAO->bind();
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    g_PlaneVAO->unbind();
+
+    // Draw cubes.
+    g_CubeVAO->bind();
+
+    glEnable(GL_CULL_FACE); // Enable face culling only for rendering closed shapes.
+    // glCullFace(cullBackFaces ? GL_BACK : GL_FRONT);
+
+    modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 1.5f, 0.0));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f));
+    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(2.0f, 0.0f, 1.0));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f));
+    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.0f, 0.0f, 2.0));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0)));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.25));
+    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // glCullFace(GL_BACK);
+    glDisable(GL_CULL_FACE);
+
+    g_CubeVAO->unbind();
 }
 
 /*
@@ -107,49 +224,62 @@ void setup()
  */
 void render()
 {
-    glClearColor(0.15f, 0.30f, 0.45f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    float correntTime = glfwGetTime();
+    float x = 2.0f * glm::cos(correntTime);
+    float z = 2.0f * glm::sin(correntTime);
 
-    // Setup common shader uniforms.
+    glm::vec3 lightPosition = glm::vec3(x, 4.0f, z); // glm::vec3 lightPosition = glm::vec3(-2.0f, 4.0f, -1.0f);
+    glm::mat4 lightProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, g_ShadowMapNear, g_ShadowMapFar);
+    glm::mat4 lightViewMatrix = glm::lookAt(lightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 lightSpaceMatrix = lightProjectionMatrix * lightViewMatrix;
+
+    // Render the depth/shadow map.
     {
-        g_BlinnPhongLightingModelSP->bind();
+        glViewport(0, 0, g_ShadowMapWidth, g_ShadowMapHeight);
 
-        // Defining general uniforms.
-        g_BlinnPhongLightingModelSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-        g_BlinnPhongLightingModelSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-        g_BlinnPhongLightingModelSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
+        g_ShadowMapSP->bind();
+        g_ShadowMapDM->bind();
 
-        // Defining light uniorms.
-        g_BlinnPhongLightingModelSP->setUniform3f("uLight.ambient", glm::vec3(0.1f, 0.1f, 0.1f));
-        g_BlinnPhongLightingModelSP->setUniform3f("uLight.diffuse", glm::vec3(0.65f, 0.65f, 0.65f));
-        g_BlinnPhongLightingModelSP->setUniform3f("uLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
-        g_BlinnPhongLightingModelSP->setUniform3f("uLight.position", glm::vec3(0.0f, 0.0f, 0.0f));
+        g_ShadowMapSP->setUniformMatrix4fv("uLightSpaceMatrix", lightSpaceMatrix);
 
-        g_BlinnPhongLightingModelSP->unbind();
+        glClear(GL_DEPTH_BUFFER_BIT);
+        drawScene(g_ShadowMapSP, false);
+
+        g_ShadowMapDM->unbind();
+        g_ShadowMapSP->unbind();
     }
 
-    // Draw objects.
+    // Render the real scene.
     {
-        // glEnable(GL_CULL_FACE); // Enable face culling only for rendering closed shapes.
+        glViewport(0, 0, g_WindowWidth, g_WindowHeight); // Reset viewport.
 
-        g_BlinnPhongLightingModelSP->bind();
-        g_PlaneVAO->bind();
+        g_AdvancedLightingSP->bind();
 
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        g_AdvancedLightingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+        g_AdvancedLightingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+        g_AdvancedLightingSP->setUniformMatrix4fv("uLightSpaceMatrix", lightSpaceMatrix);
 
-        g_BlinnPhongLightingModelSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+        g_AdvancedLightingSP->setUniform3f("uLight.ambient", glm::vec3(0.15f, 0.15f, 0.15f));
+        g_AdvancedLightingSP->setUniform3f("uLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
+        g_AdvancedLightingSP->setUniform3f("uLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+        g_AdvancedLightingSP->setUniform3f("uLight.position", lightPosition);
 
-        // Defining material uniforms.
-        g_BlinnPhongLightingModelSP->setUniform1i("uMaterial.diffuse", 0);
-        g_BlinnPhongLightingModelSP->setUniform1i("uMaterial.specular", 0);
-        g_BlinnPhongLightingModelSP->setUniform1f("uMaterial.shininess", 32.0f);
+        g_AdvancedLightingSP->setUniform1i("uMaterial.diffuse", 1);
+        g_AdvancedLightingSP->setUniform1i("uMaterial.specular", 1);
+        g_AdvancedLightingSP->setUniform1f("uMaterial.shininess", 64.0f);
 
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        g_AdvancedLightingSP->setUniform1i("uShadowMap", 0);
+        g_AdvancedLightingSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
 
-        g_PlaneVAO->unbind();
-        g_BlinnPhongLightingModelSP->unbind();
+        glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
 
-        // glDisable(GL_CULL_FACE);
+        glClearColor(0.15f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        drawScene(g_AdvancedLightingSP);
+
+        glDisable(GL_FRAMEBUFFER_SRGB);
+
+        g_AdvancedLightingSP->unbind();
     }
 
     // Draw ImGui interface/frame.
@@ -236,7 +366,7 @@ int main()
     glEnable(GL_DEPTH_TEST);       // Enable depth test.
     glEnable(GL_BLEND);            // Enable blending.
     glEnable(GL_MULTISAMPLE);      // Enable multisampling.
-    glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
+    // (...)                       // Enable gamma correction only for the last vertex shader.
     // (...)                       // Enable face culling only for rendering closed shapes.
 
     // WARNING:
