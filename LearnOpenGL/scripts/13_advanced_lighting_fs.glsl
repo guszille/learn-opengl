@@ -45,7 +45,7 @@ float calcShadowingFactor(vec3 lightDir)
     float currentDepth = projCoords.z;
 
     // Check whether current fragment position is in shadow.
-    if(projCoords.z > 1.0)
+    if (projCoords.z > 1.0)
     {
         return 0.0;
     }
@@ -63,9 +63,9 @@ float calcShadowingFactor(vec3 lightDir)
         vec2 texelSize = 1.0 / textureSize(uShadowMap, 0);
 
         // Applying percentage-closer filtering.
-        for(int x = -1; x <= 1; ++x)
+        for (int x = -1; x <= 1; ++x)
         {
-            for(int y = -1; y <= 1; ++y)
+            for (int y = -1; y <= 1; ++y)
             {
                 float pcfDepth = texture(uShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
 

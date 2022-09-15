@@ -198,6 +198,10 @@
     <None Include="scripts\12_shadow_map_vs.glsl" />
     <None Include="scripts\13_advanced_lighting_fs.glsl" />
     <None Include="scripts\13_advanced_lighting_vs.glsl" />
+    <None Include="scripts\14_omnidirectional_shadow_map_fs.glsl" />
+    <None Include="scripts\14_omnidirectional_shadow_map_vs.glsl" />
+    <None Include="scripts\15_omnidirectional_advanced_lighting_fs.glsl" />
+    <None Include="scripts\15_omnidirectional_advanced_lighting_vs.glsl" />
     <None Include="scripts\1_basic_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_vs.glsl" />
@@ -218,6 +222,7 @@
     <None Include="scripts\9_cooking_primitives_fs.glsl" />
     <None Include="scripts\9_cooking_primitives_vs.glsl" />
     <None Include="scripts\9_cooking_primitives_gs.glsl" />
+    <None Include="scripts\14_omnidirectional_shadow_map_gs.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

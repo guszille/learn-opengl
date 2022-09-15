@@ -7,7 +7,9 @@
 class DepthMap
 {
 public:
-	DepthMap(int width, int height);
+	static enum class BufferType { TEXTURE_2D, TEXTURE_CUBE_MAP };
+
+	DepthMap(int width, int height, const BufferType& type = BufferType::TEXTURE_2D);
 	~DepthMap();
 
 	void bind();
@@ -17,4 +19,5 @@ public:
 
 private:
 	unsigned int m_ID, m_DepthBuffer;
+	BufferType m_DepthBufferType;
 };

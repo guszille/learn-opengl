@@ -59,14 +59,12 @@ Camera*        g_MainCamera;
 ShaderProgram* g_ShadowMapSP;
 DepthMap*      g_ShadowMapDM;
 float          g_ShadowMapNear = 1.0f;
-float          g_ShadowMapFar = 7.5f;
-int            g_ShadowMapWidth = 2048;
-int            g_ShadowMapHeight = 2048;
+float          g_ShadowMapFar = 25.0f;
+int            g_ShadowMapWidth = 1024;
+int            g_ShadowMapHeight = 1024;
+float          g_ShadowMapAspectRatio = (float)g_ShadowMapWidth / (float)g_ShadowMapHeight;
 
 ShaderProgram* g_AdvancedLightingSP;
-
-VertexArray*   g_PlaneVAO;
-VertexBuffer*  g_PlaneVBO;
 
 VertexArray*   g_CubeVAO;
 VertexBuffer*  g_CubeVBO;
@@ -75,17 +73,6 @@ Texture*       g_WoodTex;
 
 void setup()
 {
-    float planeVertices[] = {
-        // positions            // normals         // texture coords
-         25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
-        -25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
-        -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
-
-         25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
-        -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
-         25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f
-    };
-
     float cubeVertices[] = {
         // back face
         -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
@@ -114,7 +101,7 @@ void setup()
          1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right 
          1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
          1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-         1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left 
+         1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left
         // bottom face
         -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
          1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
@@ -125,31 +112,18 @@ void setup()
         // top face
         -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
          1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-         1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right 
+         1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right
          1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
         -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-        -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left     
+        -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left  
     };
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     
-    g_ShadowMapSP = new ShaderProgram("scripts/12_shadow_map_vs.glsl", "scripts/12_shadow_map_fs.glsl");
-    g_ShadowMapDM = new DepthMap(g_ShadowMapWidth, g_ShadowMapHeight);
+    g_ShadowMapSP = new ShaderProgram("scripts/14_omnidirectional_shadow_map_vs.glsl", "scripts/14_omnidirectional_shadow_map_gs.glsl", "scripts/14_omnidirectional_shadow_map_fs.glsl");
+    g_ShadowMapDM = new DepthMap(g_ShadowMapWidth, g_ShadowMapHeight, DepthMap::BufferType::TEXTURE_CUBE_MAP);
     
-    g_AdvancedLightingSP = new ShaderProgram("scripts/13_advanced_lighting_vs.glsl", "scripts/13_advanced_lighting_fs.glsl");
-
-    g_PlaneVAO = new VertexArray();
-    g_PlaneVBO = new VertexBuffer(planeVertices, sizeof(planeVertices));
-
-    g_PlaneVAO->bind();
-    g_PlaneVBO->bind();
-
-    g_PlaneVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0));
-    g_PlaneVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    g_PlaneVAO->setVertexAttribute(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-
-    g_PlaneVAO->unbind(); // Unbind VAO before another buffer.
-    g_PlaneVBO->unbind();
+    g_AdvancedLightingSP = new ShaderProgram("scripts/15_omnidirectional_advanced_lighting_vs.glsl", "scripts/15_omnidirectional_advanced_lighting_fs.glsl");
 
     g_CubeVAO = new VertexArray();
     g_CubeVBO = new VertexBuffer(cubeVertices, sizeof(cubeVertices));
@@ -166,7 +140,7 @@ void setup()
 
     g_WoodTex = new Texture("assets/textures/wood.png", true);
 
-    // Binding textures at the end to prevent conflicts.
+    // Binding all textures at the end to prevent conflicts.
     g_ShadowMapDM->bindDepthBuffer(0);
     g_WoodTex->bind(1);
 }
@@ -174,43 +148,64 @@ void setup()
 /*
  * Call this function inside the context of an active shader program. 
  */
-void drawScene(ShaderProgram* shaderProgram, bool cullBackFaces = true)
+void drawScene(ShaderProgram* shaderProgram, bool trickNormals = false)
 {
     glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-    // Draw floor.
-    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-
-    g_PlaneVAO->bind();
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    g_PlaneVAO->unbind();
-
-    // Draw cubes.
     g_CubeVAO->bind();
 
-    glEnable(GL_CULL_FACE); // Enable face culling only for rendering closed shapes.
-    // glCullFace(cullBackFaces ? GL_BACK : GL_FRONT);
+    // Draw room.
+
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(5.0f));
+    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+    // A small little hack to invert normals when drawing cube from the inside so lighting still works.
+    if (trickNormals)
+    {
+        shaderProgram->setUniform1i("uReverseNormals", 1);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        shaderProgram->setUniform1i("uReverseNormals", 0);
+    }
+    else
+    {
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+    
+    // Draw other cubes.
+
+    glEnable(GL_CULL_FACE); // Enable face culling only for rendering specific closed shapes.
 
     modelMatrix = glm::mat4(1.0f);
-    modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 1.5f, 0.0));
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(4.0f, -3.5f, 0.0f));
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f));
     shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
     modelMatrix = glm::mat4(1.0f);
-    modelMatrix = glm::translate(modelMatrix, glm::vec3(2.0f, 0.0f, 1.0));
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(2.0f, 3.0f, 1.0f));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.75f));
+    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(-3.0f, -1.0f, 0.0f));
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f));
     shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
     modelMatrix = glm::mat4(1.0f);
-    modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.0f, 0.0f, 2.0));
-    modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f), glm::normalize(glm::vec3(1.0, 0.0, 1.0)));
-    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.25));
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.5f, 1.0f, 1.5f));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f));
     shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
-    // glCullFace(GL_BACK);
+    modelMatrix = glm::mat4(1.0f);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.5f, 2.0f, -3.0f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(60.0f), glm::normalize(glm::vec3(1.0f, 0.0f, 1.0f)));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.75f));
+    shaderProgram->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
     glDisable(GL_CULL_FACE);
 
     g_CubeVAO->unbind();
@@ -224,14 +219,22 @@ void drawScene(ShaderProgram* shaderProgram, bool cullBackFaces = true)
  */
 void render()
 {
-    float correntTime = glfwGetTime();
-    float x = 2.0f * glm::cos(correntTime);
-    float z = 2.0f * glm::sin(correntTime);
+    glm::vec3 lightPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::mat4 lightProjectionMatrix = glm::perspective(glm::radians(90.0f), g_ShadowMapAspectRatio, g_ShadowMapNear, g_ShadowMapFar);
+    std::vector<glm::mat4> lightSpaceMatrices;
 
-    glm::vec3 lightPosition = glm::vec3(x, 4.0f, z); // glm::vec3 lightPosition = glm::vec3(-2.0f, 4.0f, -1.0f);
-    glm::mat4 lightProjectionMatrix = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, g_ShadowMapNear, g_ShadowMapFar);
-    glm::mat4 lightViewMatrix = glm::lookAt(lightPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 lightSpaceMatrix = lightProjectionMatrix * lightViewMatrix;
+    lightSpaceMatrices.push_back(lightProjectionMatrix *
+        glm::lookAt(lightPosition, lightPosition + glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)));
+    lightSpaceMatrices.push_back(lightProjectionMatrix *
+        glm::lookAt(lightPosition, lightPosition + glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)));
+    lightSpaceMatrices.push_back(lightProjectionMatrix *
+        glm::lookAt(lightPosition, lightPosition + glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)));
+    lightSpaceMatrices.push_back(lightProjectionMatrix *
+        glm::lookAt(lightPosition, lightPosition + glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)));
+    lightSpaceMatrices.push_back(lightProjectionMatrix *
+        glm::lookAt(lightPosition, lightPosition + glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)));
+    lightSpaceMatrices.push_back(lightProjectionMatrix *
+        glm::lookAt(lightPosition, lightPosition + glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f)));
 
     // Render the depth/shadow map.
     {
@@ -240,10 +243,16 @@ void render()
         g_ShadowMapSP->bind();
         g_ShadowMapDM->bind();
 
-        g_ShadowMapSP->setUniformMatrix4fv("uLightSpaceMatrix", lightSpaceMatrix);
+        for (unsigned int i = 0; i < 6; ++i)
+        {
+            g_ShadowMapSP->setUniformMatrix4fv(("uLightSpaceMatrices[" + std::to_string(i) + "]").c_str(), lightSpaceMatrices[i]);
+        }
+
+        g_ShadowMapSP->setUniform3f("uLightPosition", lightPosition);
+        g_ShadowMapSP->setUniform1f("uFarPlane", g_ShadowMapFar);
 
         glClear(GL_DEPTH_BUFFER_BIT);
-        drawScene(g_ShadowMapSP, false);
+        drawScene(g_ShadowMapSP);
 
         g_ShadowMapDM->unbind();
         g_ShadowMapSP->unbind();
@@ -257,10 +266,9 @@ void render()
 
         g_AdvancedLightingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
         g_AdvancedLightingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-        g_AdvancedLightingSP->setUniformMatrix4fv("uLightSpaceMatrix", lightSpaceMatrix);
 
-        g_AdvancedLightingSP->setUniform3f("uLight.ambient", glm::vec3(0.15f, 0.15f, 0.15f));
-        g_AdvancedLightingSP->setUniform3f("uLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
+        g_AdvancedLightingSP->setUniform3f("uLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+        g_AdvancedLightingSP->setUniform3f("uLight.diffuse", glm::vec3(0.3f, 0.3f, 0.3f));
         g_AdvancedLightingSP->setUniform3f("uLight.specular", glm::vec3(1.0f, 1.0f, 1.0f));
         g_AdvancedLightingSP->setUniform3f("uLight.position", lightPosition);
 
@@ -270,12 +278,13 @@ void render()
 
         g_AdvancedLightingSP->setUniform1i("uShadowMap", 0);
         g_AdvancedLightingSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
+        g_AdvancedLightingSP->setUniform1f("uFarPlane", g_ShadowMapFar);
 
         glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
 
-        glClearColor(0.15f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        drawScene(g_AdvancedLightingSP);
+        drawScene(g_AdvancedLightingSP, true);
 
         glDisable(GL_FRAMEBUFFER_SRGB);
 
