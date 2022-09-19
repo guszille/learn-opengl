@@ -46,13 +46,15 @@ struct Material
 {
     sampler2D diffuseMaps[N_MAT_COLOR_MAPS];
     sampler2D specularMaps[N_MAT_COLOR_MAPS];
+    sampler2D normalMaps[N_MAT_COLOR_MAPS];
 
     float shininess;
 }; 
 
-in vec3 oiFragPos;
-in vec3 oiFragNormal;
-in vec2 oiTexCoords;
+in vec3 ioFragPos;
+in vec3 ioFragNormal;
+in vec2 ioTexCoords;
+in mat3 ioTBN;
 
 uniform DirectionalLight uDirectionalLight;
 uniform PointLight uPointLights[N_POINT_LIGHTS];
@@ -65,40 +67,40 @@ out vec4 FragColor;
 
 vec3 calcDirectionalLight(DirectionalLight lightSource)
 {
-    vec3 fragNormal = normalize(oiFragNormal);
+    vec3 fragNormal = normalize(ioTBN * (texture(uMaterial.normalMaps[0], ioTexCoords).rgb * 2.0 - 1.0)); // Obtain the normal vector in range [0,1] and transform it to range [-1,1].
     vec3 lightDir   = normalize(-lightSource.direction);
-    vec3 viewDir    = normalize(uViewPos - oiFragPos);
-    vec3 reflectDir = reflect(-lightDir, fragNormal);
+    vec3 viewDir    = normalize(uViewPos - ioFragPos);
+    vec3 halfwayDir = normalize(lightDir + viewDir);
 
     float diffuseStr  = max(dot(fragNormal, lightDir), 0.0);
-    float specularStr = 0.5 * pow(max(dot(viewDir, reflectDir), 0.0), uMaterial.shininess);
+    float specularStr = 0.5 * pow(max(dot(viewDir, halfwayDir), 0.0), uMaterial.shininess);
 
     // Calculating "Phong Lighting" components.
 
-    vec3 ambient  = lightSource.ambient * vec3(texture(uMaterial.diffuseMaps[0], oiTexCoords));
-    vec3 diffuse  = lightSource.diffuse * (diffuseStr * vec3(texture(uMaterial.diffuseMaps[0], oiTexCoords)));
-    vec3 specular = lightSource.specular * (specularStr * vec3(texture(uMaterial.specularMaps[0], oiTexCoords)));
+    vec3 ambient  = lightSource.ambient * vec3(texture(uMaterial.diffuseMaps[0], ioTexCoords));
+    vec3 diffuse  = lightSource.diffuse * (diffuseStr * vec3(texture(uMaterial.diffuseMaps[0], ioTexCoords)));
+    vec3 specular = lightSource.specular * (specularStr * vec3(texture(uMaterial.specularMaps[0], ioTexCoords)));
 
     return ambient + diffuse + specular;
 }
 
 vec3 calcPointLight(PointLight lightSource)
 {
-    vec3 fragNormal = normalize(oiFragNormal);
-    vec3 lightDir   = normalize(lightSource.position - oiFragPos);
-    vec3 viewDir    = normalize(uViewPos - oiFragPos);
-    vec3 reflectDir = reflect(-lightDir, fragNormal);
+    vec3 fragNormal = normalize(ioTBN * (texture(uMaterial.normalMaps[0], ioTexCoords).rgb * 2.0 - 1.0)); // Obtain the normal vector in range [0,1] and transform it to range [-1,1].
+    vec3 lightDir   = normalize(lightSource.position - ioFragPos);
+    vec3 viewDir    = normalize(uViewPos - ioFragPos);
+    vec3 halfwayDir = normalize(lightDir + viewDir);
 
     float diffuseStr  = max(dot(fragNormal, lightDir), 0.0);
-    float specularStr = 0.5 * pow(max(dot(viewDir, reflectDir), 0.0), uMaterial.shininess);
-    float distance    = length(lightSource.position - oiFragPos);
+    float specularStr = 0.5 * pow(max(dot(viewDir, halfwayDir), 0.0), uMaterial.shininess);
+    float distance    = length(lightSource.position - ioFragPos);
     float attenuation = 1.0 / (lightSource.constant + lightSource.linear * distance + lightSource.quadratic * (distance * distance));
 
     // Calculating "Phong Lighting" components.
 
-    vec3 ambient  = lightSource.ambient * vec3(texture(uMaterial.diffuseMaps[0], oiTexCoords));
-    vec3 diffuse  = lightSource.diffuse * (diffuseStr * vec3(texture(uMaterial.diffuseMaps[0], oiTexCoords)));
-    vec3 specular = lightSource.specular * (specularStr * vec3(texture(uMaterial.specularMaps[0], oiTexCoords)));
+    vec3 ambient  = lightSource.ambient * vec3(texture(uMaterial.diffuseMaps[0], ioTexCoords));
+    vec3 diffuse  = lightSource.diffuse * (diffuseStr * vec3(texture(uMaterial.diffuseMaps[0], ioTexCoords)));
+    vec3 specular = lightSource.specular * (specularStr * vec3(texture(uMaterial.specularMaps[0], ioTexCoords)));
 
     ambient  *= attenuation;
     diffuse  *= attenuation;
@@ -109,25 +111,25 @@ vec3 calcPointLight(PointLight lightSource)
 
 vec3 calcSpotLight(SpotLight lightSource)
 {
-    vec3 fragNormal = normalize(oiFragNormal);
-    vec3 lightDir   = normalize(lightSource.position - oiFragPos);
-    vec3 viewDir    = normalize(uViewPos - oiFragPos);
-    vec3 reflectDir = reflect(-lightDir, fragNormal);
+    vec3 fragNormal = normalize(ioTBN * (texture(uMaterial.normalMaps[0], ioTexCoords).rgb * 2.0 - 1.0)); // Obtain the normal vector in range [0,1] and transform it to range [-1,1].
+    vec3 lightDir   = normalize(lightSource.position - ioFragPos);
+    vec3 viewDir    = normalize(uViewPos - ioFragPos);
+    vec3 halfwayDir = normalize(lightDir + viewDir);
 
     float theta     = dot(lightDir, normalize(-lightSource.direction));
     float epsilon   = lightSource.cutOff - lightSource.outerCutOff;
     float intensity = clamp((theta - lightSource.outerCutOff) / epsilon, 0.0, 1.0);
     
     float diffuseStr  = max(dot(fragNormal, lightDir), 0.0);
-    float specularStr = 0.5 * pow(max(dot(viewDir, reflectDir), 0.0), uMaterial.shininess);
-    float distance    = length(lightSource.position - oiFragPos);
+    float specularStr = 0.5 * pow(max(dot(viewDir, halfwayDir), 0.0), uMaterial.shininess);
+    float distance    = length(lightSource.position - ioFragPos);
     float attenuation = 1.0 / (lightSource.constant + lightSource.linear * distance + lightSource.quadratic * (distance * distance));
 
     // Calculating "Phong Lighting" components.
 
-    vec3 ambient  = lightSource.ambient * vec3(texture(uMaterial.diffuseMaps[0], oiTexCoords));
-    vec3 diffuse  = lightSource.diffuse * (diffuseStr * vec3(texture(uMaterial.diffuseMaps[0], oiTexCoords)));
-    vec3 specular = lightSource.specular * (specularStr * vec3(texture(uMaterial.specularMaps[0], oiTexCoords)));
+    vec3 ambient  = lightSource.ambient * vec3(texture(uMaterial.diffuseMaps[0], ioTexCoords));
+    vec3 diffuse  = lightSource.diffuse * (diffuseStr * vec3(texture(uMaterial.diffuseMaps[0], ioTexCoords)));
+    vec3 specular = lightSource.specular * (specularStr * vec3(texture(uMaterial.specularMaps[0], ioTexCoords)));
 
     diffuse  *= intensity;
     specular *= intensity;
@@ -170,7 +172,7 @@ void main()
     }
     else
     {
-        result = vec3(texture(uMaterial.diffuseMaps[0], oiTexCoords));
+        result = vec3(texture(uMaterial.diffuseMaps[0], ioTexCoords));
     }
 
     FragColor = vec4(result, 1.0);

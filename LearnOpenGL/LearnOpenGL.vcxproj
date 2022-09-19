@@ -193,6 +193,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="scripts\10_model_loading_fs.glsl" />
+    <None Include="scripts\10_model_loading_vs.glsl" />
     <None Include="scripts\11_instancing_models_vs.glsl" />
     <None Include="scripts\12_shadow_map_fs.glsl" />
     <None Include="scripts\12_shadow_map_vs.glsl" />
@@ -202,6 +203,8 @@
     <None Include="scripts\14_omnidirectional_shadow_map_vs.glsl" />
     <None Include="scripts\15_omnidirectional_advanced_lighting_fs.glsl" />
     <None Include="scripts\15_omnidirectional_advanced_lighting_vs.glsl" />
+    <None Include="scripts\16_advanced_bplm_fs.glsl" />
+    <None Include="scripts\16_advanced_bplm_vs.glsl" />
     <None Include="scripts\1_basic_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_vs.glsl" />

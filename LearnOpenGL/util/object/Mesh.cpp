@@ -17,10 +17,12 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>&
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(0));
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_Normal)));
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_TexCoords)));
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)(offsetof(Vertex, m_Tangent)));
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
 
 	glBindVertexArray(0); // Unbind the VAO before any other buffer.
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -47,6 +49,10 @@ void Mesh::draw(ShaderProgram* shaderProgram)
 		else if (m_Textures[i].m_Type == "TEXTURE_SPECULAR")
 		{
 			uniformName += "uMaterial.specularMaps[" + std::to_string(texNumber[1]++) + "]";
+		}
+		else if (m_Textures[i].m_Type == "TEXTURE_NORMAL")
+		{
+			uniformName += "uMaterial.normalMaps[" + std::to_string(texNumber[1]++) + "]";
 		}
 
 		shaderProgram->setUniform1i(uniformName.c_str(), i);

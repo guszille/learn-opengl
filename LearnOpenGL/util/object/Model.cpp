@@ -39,7 +39,7 @@ void Model::loadModel(const std::string& filepath)
 	// 
 	// http://assimp.sourceforge.net/lib_html/postprocess_8h.html
 	//
-	const aiScene* scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_FlipUVs);
+	const aiScene* scene = importer.ReadFile(filepath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 	{
@@ -99,6 +99,10 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 			vertex.m_TexCoords = glm::vec2(0.0f, 0.0f);
 		}
 
+		vertex.m_Tangent.x = mesh->mTangents[i].x;
+		vertex.m_Tangent.y = mesh->mTangents[i].y;
+		vertex.m_Tangent.z = mesh->mTangents[i].z;
+
 		vertices.push_back(vertex);
 	}
 
@@ -123,6 +127,9 @@ Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
 
 		std::vector<MeshTexture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "TEXTURE_SPECULAR");
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+
+		std::vector<MeshTexture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "TEXTURE_NORMAL");
+		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 	}
 
 	return Mesh(vertices, indices, textures);

@@ -149,5 +149,8 @@
     <None Include="scripts\14_omnidirectional_shadow_map_gs.glsl" />
     <None Include="scripts\15_omnidirectional_advanced_lighting_vs.glsl" />
     <None Include="scripts\15_omnidirectional_advanced_lighting_fs.glsl" />
+    <None Include="scripts\16_advanced_bplm_vs.glsl" />
+    <None Include="scripts\16_advanced_bplm_fs.glsl" />
+    <None Include="scripts\10_model_loading_vs.glsl" />
   </ItemGroup>
 </Project>
