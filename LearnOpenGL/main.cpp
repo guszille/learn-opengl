@@ -49,9 +49,9 @@ float g_DeltaTime   = 0.0f;
 float g_LastFrame   = 0.0f;
 float g_CameraSpeed = 7.5f;
 
-int g_CursorMode           = GLFW_CURSOR_DISABLED;
-int g_DrawMode             = GL_FILL;
-int g_DisableNormalMapping = 0;
+int g_CursorMode      = GLFW_CURSOR_DISABLED;
+int g_DrawMode        = GL_FILL;
+int g_EnableNPMapping = 1;
 
 glm::mat4      g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 1000.0f);
 Camera*        g_MainCamera;
@@ -67,6 +67,11 @@ VertexBuffer*  g_QuadVBO;
 
 Texture*       g_BrickwallTex;
 Texture*       g_BrickwallNMTex;
+Texture*       g_BrickwallPMTex;
+
+Texture*       g_WoodenSurfaceTex;
+Texture*       g_WoodenSurfaceNMTex;
+Texture*       g_WoodenSurfacePMTex;
 
 void setup()
 {
@@ -170,12 +175,23 @@ void setup()
     g_QuadVAO->unbind(); // Unbind VAO before another buffer.
     g_QuadVBO->unbind();
 
-    g_BrickwallTex = new Texture("assets/textures/brickwall.jpg", true);
-    g_BrickwallNMTex = new Texture("assets/textures/brickwall_normal_map.jpg");
+    g_BrickwallTex = new Texture("assets/textures/brickwall_2.jpg", true);
+    g_BrickwallNMTex = new Texture("assets/textures/brickwall_2_normal_map.jpg");
+    g_BrickwallPMTex = new Texture("assets/textures/brickwall_2_displacement_map.jpg");
+
+    g_WoodenSurfaceTex = new Texture("assets/textures/wooden_surface.png", true);
+    g_WoodenSurfaceNMTex = new Texture("assets/textures/toybox_normal_map.png");
+    g_WoodenSurfacePMTex = new Texture("assets/textures/toybox_displacement_map.png");
 
     // Binding all textures at the end to prevent conflicts.
+
     g_BrickwallTex->bind(0);
     g_BrickwallNMTex->bind(1);
+    g_BrickwallPMTex->bind(2);
+
+    g_WoodenSurfaceTex->bind(3);
+    g_WoodenSurfaceNMTex->bind(4);
+    g_WoodenSurfacePMTex->bind(5);
 }
 
 /*
@@ -186,7 +202,7 @@ void setup()
  */
 void render()
 {
-    glm::vec3 lightPosition = glm::vec3(0.5f, 0.8f, 0.5f);
+    glm::vec3 lightPosition = glm::vec3(0.0f, 1.0f, 0.5f);
 
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -218,34 +234,59 @@ void render()
         g_BasicSP->unbind();
     }
 
-    // Render the quad.
+    // Render quads.
     {
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        // modelMatrix = glm::rotate(modelMatrix, glm::radians((float)glfwGetTime() * -10.0f), glm::normalize(glm::vec3(1.0f, 0.0f, 1.0f)));
-
         g_AdvancedLightingSP->bind();
         g_QuadVAO->bind();
-
-        g_AdvancedLightingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+        
         g_AdvancedLightingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
         g_AdvancedLightingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
         g_AdvancedLightingSP->setUniform3f("uLight.ambientComp", glm::vec3(0.1f, 0.1f, 0.1f));
         g_AdvancedLightingSP->setUniform3f("uLight.diffuseComp", glm::vec3(1.0f, 1.0f, 1.0f));
-        g_AdvancedLightingSP->setUniform3f("uLight.specularComp", glm::vec3(0.8f, 0.8f, 0.8f));
+        g_AdvancedLightingSP->setUniform3f("uLight.specularComp", glm::vec3(0.2f, 0.2f, 0.2f));
         g_AdvancedLightingSP->setUniform3f("uLight.position", lightPosition);
 
-        g_AdvancedLightingSP->setUniform1i("uMaterial.diffuseMap", 0);
-        g_AdvancedLightingSP->setUniform1i("uMaterial.specularMap", 0);
-        g_AdvancedLightingSP->setUniform1i("uMaterial.normalMap", 1);
-        g_AdvancedLightingSP->setUniform1f("uMaterial.shininess", 32.0f);
-
         g_AdvancedLightingSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
-        g_AdvancedLightingSP->setUniform1i("uDisableNormalMapping", g_DisableNormalMapping);
+        g_AdvancedLightingSP->setUniform3f("uLightPos", lightPosition);
+        g_AdvancedLightingSP->setUniform1f("uHeightScale", 0.1f);
+        g_AdvancedLightingSP->setUniform1i("uEnableNPMapping", g_EnableNPMapping);
 
         glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
 
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        // Quad 1.
+        {
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.05f, 0.0f, 0.0f));
+            modelMatrix = glm::rotate(modelMatrix, glm::radians(15.5f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+            g_AdvancedLightingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+            g_AdvancedLightingSP->setUniform1i("uMaterial.diffuseMap", 0);
+            g_AdvancedLightingSP->setUniform1i("uMaterial.specularMap", 0);
+            g_AdvancedLightingSP->setUniform1i("uMaterial.normalMap", 1);
+            g_AdvancedLightingSP->setUniform1i("uMaterial.parallaxMap", 2);
+            g_AdvancedLightingSP->setUniform1f("uMaterial.shininess", 32.0f);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
+        // Quad 2.
+        {
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, glm::vec3(1.05f, 0.0f, 0.0f));
+            modelMatrix = glm::rotate(modelMatrix, glm::radians(-15.5f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+            g_AdvancedLightingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+            g_AdvancedLightingSP->setUniform1i("uMaterial.diffuseMap", 3);
+            g_AdvancedLightingSP->setUniform1i("uMaterial.specularMap", 3);
+            g_AdvancedLightingSP->setUniform1i("uMaterial.normalMap", 4);
+            g_AdvancedLightingSP->setUniform1i("uMaterial.parallaxMap", 5);
+            g_AdvancedLightingSP->setUniform1f("uMaterial.shininess", 32.0f);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
 
         glDisable(GL_FRAMEBUFFER_SRGB);
 
@@ -263,7 +304,7 @@ void render()
         {
             ImGui::Begin("General");
             ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
-            ImGui::Text("Normal Mapping %s", g_DisableNormalMapping == 0 ? "ENABLED" : "DISABLED");
+            ImGui::Text("NP Mapping %s", g_EnableNPMapping == 1 ? "ENABLED" : "DISABLED");
             ImGui::End();
         }
 
@@ -440,9 +481,9 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
 
         glPolygonMode(GL_FRONT_AND_BACK, g_DrawMode);
     }
-    else if (key == GLFW_KEY_F && action == GLFW_PRESS) // To enable/disable normal mapping.
+    else if (key == GLFW_KEY_F && action == GLFW_PRESS) // To enable/disable normal and parallax mapping.
     {
-        g_DisableNormalMapping = g_DisableNormalMapping == 0 ? 1 : 0;
+        g_EnableNPMapping = g_EnableNPMapping == 0 ? 1 : 0;
     }
     else if ((key == GLFW_KEY_N || key == GLFW_KEY_M ) && action == GLFW_PRESS) // To increase/decrease camera speed.
     {
