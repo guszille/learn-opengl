@@ -58,6 +58,10 @@ uniform SpotLight uSpotLight;
 uniform Material uMaterial;
 uniform vec3 uViewPos;
 
+uniform bool uActivateDirectionalLight = true;
+uniform bool uActivatePointLights = true;
+uniform bool uActivateSpotLight = true;
+
 out vec4 FragColor;
 
 vec3 calcDirectionalLight(DirectionalLight lightSource)
@@ -147,16 +151,25 @@ void main()
     vec3 result = vec3(0.0);
 
     // 1. Directional light.
-    result += calcDirectionalLight(uDirectionalLight);
+    if (uActivateDirectionalLight)
+    {
+        result += calcDirectionalLight(uDirectionalLight);
+    }
 
     // 2. Point lights.
-    for(int i = 0; i < N_POINT_LIGHTS; i++)
+    if (uActivatePointLights)
     {
-        result += calcPointLight(uPointLights[i]);
+        for(int i = 0; i < N_POINT_LIGHTS; i++)
+        {
+            result += calcPointLight(uPointLights[i]);
+        }
     }
 
     // 3. Spot light.
-    result += calcSpotLight(uSpotLight);
+    if (uActivateSpotLight)
+    {
+        result += calcSpotLight(uSpotLight);
+    }
 
     FragColor = vec4(result, 1.0);
 }

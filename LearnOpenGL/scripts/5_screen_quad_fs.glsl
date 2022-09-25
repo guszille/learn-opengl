@@ -3,6 +3,7 @@
 in vec2 oiTexCoords;
   
 uniform sampler2D uScreenTexture;
+uniform float uExposure = 1.0; // Only used when HDR is activated.
 uniform int uActiveEffect = 0; // Zero means "no effect".
 
 out vec4 FragColor;
@@ -86,6 +87,10 @@ void main()
 
     case 5: // Edge-detection.
         FragColor = processKernel(edgeDetectionKernel);
+        break;
+
+    case 6: // HDR.
+        FragColor = vec4(vec3(1.0) - exp(-pixel.rgb * uExposure), 1.0);
         break;
 
     default:

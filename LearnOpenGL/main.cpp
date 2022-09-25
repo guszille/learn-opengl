@@ -48,117 +48,87 @@ void processInput(GLFWwindow* window);
 float g_DeltaTime   = 0.0f;
 float g_LastFrame   = 0.0f;
 float g_CameraSpeed = 7.5f;
+float g_HDRExposure = 1.0f;
 
-int g_CursorMode      = GLFW_CURSOR_DISABLED;
-int g_DrawMode        = GL_FILL;
-int g_EnableNPMapping = 1;
+int g_CursorMode       = GLFW_CURSOR_DISABLED;
+int g_DrawMode         = GL_FILL;
+int g_ActivateLighting = 1;
 
 glm::mat4      g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 1000.0f);
 Camera*        g_MainCamera;
 
-ShaderProgram* g_BasicSP;
-ShaderProgram* g_AdvancedLightingSP;
-
-VertexArray*   g_PointVAO;
-VertexBuffer*  g_PointVBO;
+ShaderProgram* g_BPLightingSP;
+ShaderProgram* g_ScreenSP;
 
 VertexArray*   g_QuadVAO;
 VertexBuffer*  g_QuadVBO;
 
-Texture*       g_BrickwallTex;
-Texture*       g_BrickwallNMTex;
-Texture*       g_BrickwallPMTex;
+VertexArray*   g_CubeVAO;
+VertexBuffer*  g_CubeVBO;
+
+FrameBuffer*   g_ScreenFB;
 
 Texture*       g_WoodenSurfaceTex;
-Texture*       g_WoodenSurfaceNMTex;
-Texture*       g_WoodenSurfacePMTex;
 
 void setup()
 {
-    float pointVertice[] = { 0.0f, 0.0f, 0.0f };
-
-    // Positions.
-    glm::vec3 pos1(-1.0f,  1.0f, 0.0f);
-    glm::vec3 pos2(-1.0f, -1.0f, 0.0f);
-    glm::vec3 pos3( 1.0f, -1.0f, 0.0f);
-    glm::vec3 pos4( 1.0f,  1.0f, 0.0f);
-
-    // Texture coordinates,
-    glm::vec2 uv1(0.0f, 1.0f);
-    glm::vec2 uv2(0.0f, 0.0f);
-    glm::vec2 uv3(1.0f, 0.0f);
-    glm::vec2 uv4(1.0f, 1.0f);
-
-    // Normal vector.
-    glm::vec3 nm(0.0f, 0.0f, 1.0f);
-
-    // Calculate tangent/bitangent vectors of both triangles.
-    glm::vec3 tan1, bitan1;
-    glm::vec3 tan2, bitan2;
-
-    glm::vec3 edge1;
-    glm::vec3 edge2;
-    glm::vec2 deltaUV1;
-    glm::vec2 deltaUV2;
-
-    // Triangle 1.
-    edge1 = pos2 - pos1;
-    edge2 = pos3 - pos1;
-    deltaUV1 = uv2 - uv1;
-    deltaUV2 = uv3 - uv1;
-
-    float f1 = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-    tan1.x = f1 * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-    tan1.y = f1 * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-    tan1.z = f1 * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-
-    bitan1.x = f1 * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
-    bitan1.y = f1 * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
-    bitan1.z = f1 * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
-
-    // Triangle 2.
-    edge1 = pos3 - pos1;
-    edge2 = pos4 - pos1;
-    deltaUV1 = uv3 - uv1;
-    deltaUV2 = uv4 - uv1;
-
-    float f2 = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-    tan2.x = f2 * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-    tan2.y = f2 * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-    tan2.z = f2 * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-
-    bitan2.x = f2 * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
-    bitan2.y = f2 * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
-    bitan2.z = f2 * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
-
     float quadVertices[] = {
-        // Positions            // Normal         // Tex coords // Tangent              // Bitangent
-        pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tan1.x, tan1.y, tan1.z, bitan1.x, bitan1.y, bitan1.z,
-        pos2.x, pos2.y, pos2.z, nm.x, nm.y, nm.z, uv2.x, uv2.y, tan1.x, tan1.y, tan1.z, bitan1.x, bitan1.y, bitan1.z,
-        pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tan1.x, tan1.y, tan1.z, bitan1.x, bitan1.y, bitan1.z,
+        // positions        // texture coords
+        -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+         1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+         1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+    };
 
-        pos1.x, pos1.y, pos1.z, nm.x, nm.y, nm.z, uv1.x, uv1.y, tan2.x, tan2.y, tan2.z, bitan2.x, bitan2.y, bitan2.z,
-        pos3.x, pos3.y, pos3.z, nm.x, nm.y, nm.z, uv3.x, uv3.y, tan2.x, tan2.y, tan2.z, bitan2.x, bitan2.y, bitan2.z,
-        pos4.x, pos4.y, pos4.z, nm.x, nm.y, nm.z, uv4.x, uv4.y, tan2.x, tan2.y, tan2.z, bitan2.x, bitan2.y, bitan2.z
+    float cubeVertices[] = {
+        // back face
+        -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+         1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+         1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right
+         1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+        -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+        -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+        // front face
+        -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+         1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
+         1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+         1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+        -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
+        -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+        // left face
+        -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+        -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
+        -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+        -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+        -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+        -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+        // right face
+         1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+         1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+         1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right
+         1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+         1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+         1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left
+         // bottom face
+        -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+         1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
+         1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+         1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+        -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+        -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+        // top face
+        -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+         1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+         1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right
+         1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+        -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+        -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left   
     };
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         
-    g_BasicSP = new ShaderProgram("scripts/1_basic_vs.glsl", "scripts/1_basic_fs.glsl");
-    g_AdvancedLightingSP = new ShaderProgram("scripts/16_advanced_bplm_vs.glsl", "scripts/16_advanced_bplm_fs.glsl");
-
-    g_PointVAO = new VertexArray();
-    g_PointVBO = new VertexBuffer(pointVertice, sizeof(pointVertice));
-
-    g_PointVAO->bind();
-    g_PointVBO->bind();
-
-    g_PointVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(0));
-
-    g_PointVAO->unbind(); // Unbind VAO before another buffer.
-    g_PointVBO->unbind();
+    g_BPLightingSP = new ShaderProgram("scripts/3_blinn_phong_lighting_model_vs.glsl", "scripts/4_bplm_fs_multiple_lc.glsl");
+    g_ScreenSP = new ShaderProgram("scripts/5_screen_quad_vs.glsl", "scripts/5_screen_quad_fs.glsl");
 
     g_QuadVAO = new VertexArray();
     g_QuadVBO = new VertexBuffer(quadVertices, sizeof(quadVertices));
@@ -166,32 +136,33 @@ void setup()
     g_QuadVAO->bind();
     g_QuadVBO->bind();
 
-    g_QuadVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)( 0));
-    g_QuadVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)( 3 * sizeof(float)));
-    g_QuadVAO->setVertexAttribute(2, 2, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)( 6 * sizeof(float)));
-    g_QuadVAO->setVertexAttribute(3, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)( 8 * sizeof(float)));
-    g_QuadVAO->setVertexAttribute(4, 3, GL_FLOAT, GL_FALSE, 14 * sizeof(float), (void*)(11 * sizeof(float)));
+    g_QuadVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(0));
+    g_QuadVAO->setVertexAttribute(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     g_QuadVAO->unbind(); // Unbind VAO before another buffer.
     g_QuadVBO->unbind();
 
-    g_BrickwallTex = new Texture("assets/textures/brickwall_2.jpg", true);
-    g_BrickwallNMTex = new Texture("assets/textures/brickwall_2_normal_map.jpg");
-    g_BrickwallPMTex = new Texture("assets/textures/brickwall_2_displacement_map.jpg");
+    g_CubeVAO = new VertexArray();
+    g_CubeVBO = new VertexBuffer(cubeVertices, sizeof(cubeVertices));
+
+    g_CubeVAO->bind();
+    g_CubeVBO->bind();
+
+    g_CubeVAO->setVertexAttribute(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0));
+    g_CubeVAO->setVertexAttribute(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    g_CubeVAO->setVertexAttribute(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+
+    g_CubeVAO->unbind(); // Unbind VAO before another buffer.
+    g_CubeVBO->unbind();
+
+    g_ScreenFB = new FrameBuffer(g_WindowWidth, g_WindowHeight, 0, GL_RGBA16F);
 
     g_WoodenSurfaceTex = new Texture("assets/textures/wooden_surface.png", true);
-    g_WoodenSurfaceNMTex = new Texture("assets/textures/toybox_normal_map.png");
-    g_WoodenSurfacePMTex = new Texture("assets/textures/toybox_displacement_map.png");
 
-    // Binding all textures at the end to prevent conflicts.
+    // Bind framebuffers and textures at the end to prevent conflicts.
 
-    g_BrickwallTex->bind(0);
-    g_BrickwallNMTex->bind(1);
-    g_BrickwallPMTex->bind(2);
-
-    g_WoodenSurfaceTex->bind(3);
-    g_WoodenSurfaceNMTex->bind(4);
-    g_WoodenSurfacePMTex->bind(5);
+    g_ScreenFB->bindColorBuffer(0);
+    g_WoodenSurfaceTex->bind(1);
 }
 
 /*
@@ -202,96 +173,85 @@ void setup()
  */
 void render()
 {
-    glm::vec3 lightPosition = glm::vec3(0.0f, 1.0f, 0.5f);
-
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Render the light object.
+    // Render scene into the custom framebuffer.
     {
+        std::vector<glm::vec3> lightPositions;
+        std::vector<glm::vec3> lightColors;
+
+        lightPositions.push_back(glm::vec3( 0.0f,  0.0f, -48.5f));
+        lightPositions.push_back(glm::vec3(-1.4f, -1.8f,  -8.0f));
+        lightPositions.push_back(glm::vec3( 0.0f, -1.8f,  -6.0f));
+        lightPositions.push_back(glm::vec3( 1.4f, -1.8f,  -4.0f));
+
+        lightColors.push_back(glm::vec3(200.0f, 200.0f, 200.0f));
+        lightColors.push_back(glm::vec3(  1.5f,   0.0f,   0.0f));
+        lightColors.push_back(glm::vec3(  0.0f,   0.0f,   1.5f));
+        lightColors.push_back(glm::vec3(  0.0f,   1.5f,   0.0f));
+
         glm::mat4 modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::translate(modelMatrix, lightPosition);
+        modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, -22.5f));
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(2.5f, 2.5f, -27.5f));
 
-        g_BasicSP->bind();
-        g_PointVAO->bind();
+        g_ScreenFB->bind();
+        g_BPLightingSP->bind();
+        g_CubeVAO->bind();
 
-        g_BasicSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-        g_BasicSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-        g_BasicSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+        g_BPLightingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+        g_BPLightingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+        g_BPLightingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
-        g_BasicSP->setUniform1i("uEnablePointSize", 1);
-        g_BasicSP->setUniform1f("uPointSize", 10.0f);
+        g_BPLightingSP->setUniform1i("uInverseNormals", 1);
 
-        g_BasicSP->setUniform3f("uColor", glm::vec3(1.0f, 1.0f, 1.0f));
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].position").c_str(), lightPositions[i]);
+            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].ambient").c_str(), glm::vec3(0.0f, 0.0f, 0.0f));
+            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].diffuse").c_str(), lightColors[i]);
+            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].specular").c_str(), glm::vec3(0.0f, 0.0f, 0.0f));
+            g_BPLightingSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].constant").c_str(), 1.0f);
+            g_BPLightingSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].linear").c_str(), 0.35f);
+            g_BPLightingSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].quadratic").c_str(), 0.44f);
+        }
 
-        glEnable(GL_PROGRAM_POINT_SIZE); // Enable point size customization.
+        g_BPLightingSP->setUniform1i("uMaterial.diffuse", 1);
+        g_BPLightingSP->setUniform1i("uMaterial.specular", 1);
+        g_BPLightingSP->setUniform1f("uMaterial.shininess", 32.0f);
 
-        glDrawArrays(GL_POINTS, 0, 1);
+        g_BPLightingSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
 
-        glDisable(GL_PROGRAM_POINT_SIZE);
+        g_BPLightingSP->setUniform1i("uActivateDirectionalLight", 0);
+        g_BPLightingSP->setUniform1i("uActivatePointLights", g_ActivateLighting);
+        g_BPLightingSP->setUniform1i("uActivateSpotLight", 0);
 
-        g_PointVAO->unbind();
-        g_BasicSP->unbind();
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        g_CubeVAO->unbind();
+        g_BPLightingSP->unbind();
+        g_ScreenFB->unbind();
     }
 
-    // Render quads.
+    // Render on screen framebuffer.
     {
-        g_AdvancedLightingSP->bind();
+        g_ScreenSP->bind();
         g_QuadVAO->bind();
-        
-        g_AdvancedLightingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-        g_AdvancedLightingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
-        g_AdvancedLightingSP->setUniform3f("uLight.ambientComp", glm::vec3(0.1f, 0.1f, 0.1f));
-        g_AdvancedLightingSP->setUniform3f("uLight.diffuseComp", glm::vec3(1.0f, 1.0f, 1.0f));
-        g_AdvancedLightingSP->setUniform3f("uLight.specularComp", glm::vec3(0.2f, 0.2f, 0.2f));
-        g_AdvancedLightingSP->setUniform3f("uLight.position", lightPosition);
+        g_ScreenSP->setUniform1i("uScreenTexture", 0);
+        g_ScreenSP->setUniform1i("uActiveEffect", 6); // HDR effect.
+        g_ScreenSP->setUniform1f("uExposure", g_HDRExposure);
 
-        g_AdvancedLightingSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
-        g_AdvancedLightingSP->setUniform3f("uLightPos", lightPosition);
-        g_AdvancedLightingSP->setUniform1f("uHeightScale", 0.1f);
-        g_AdvancedLightingSP->setUniform1i("uEnableNPMapping", g_EnableNPMapping);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
 
-        // Quad 1.
-        {
-            glm::mat4 modelMatrix = glm::mat4(1.0f);
-            modelMatrix = glm::translate(modelMatrix, glm::vec3(-1.05f, 0.0f, 0.0f));
-            modelMatrix = glm::rotate(modelMatrix, glm::radians(15.5f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-            g_AdvancedLightingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-
-            g_AdvancedLightingSP->setUniform1i("uMaterial.diffuseMap", 0);
-            g_AdvancedLightingSP->setUniform1i("uMaterial.specularMap", 0);
-            g_AdvancedLightingSP->setUniform1i("uMaterial.normalMap", 1);
-            g_AdvancedLightingSP->setUniform1i("uMaterial.parallaxMap", 2);
-            g_AdvancedLightingSP->setUniform1f("uMaterial.shininess", 32.0f);
-
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
-
-        // Quad 2.
-        {
-            glm::mat4 modelMatrix = glm::mat4(1.0f);
-            modelMatrix = glm::translate(modelMatrix, glm::vec3(1.05f, 0.0f, 0.0f));
-            modelMatrix = glm::rotate(modelMatrix, glm::radians(-15.5f), glm::vec3(0.0f, 1.0f, 0.0f));
-
-            g_AdvancedLightingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-
-            g_AdvancedLightingSP->setUniform1i("uMaterial.diffuseMap", 3);
-            g_AdvancedLightingSP->setUniform1i("uMaterial.specularMap", 3);
-            g_AdvancedLightingSP->setUniform1i("uMaterial.normalMap", 4);
-            g_AdvancedLightingSP->setUniform1i("uMaterial.parallaxMap", 5);
-            g_AdvancedLightingSP->setUniform1f("uMaterial.shininess", 32.0f);
-
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         glDisable(GL_FRAMEBUFFER_SRGB);
 
+        g_ScreenSP->unbind();
         g_QuadVAO->unbind();
-        g_AdvancedLightingSP->unbind();
     }
 
     // Draw ImGui interface/frame.
@@ -304,7 +264,8 @@ void render()
         {
             ImGui::Begin("General");
             ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
-            ImGui::Text("NP Mapping %s", g_EnableNPMapping == 1 ? "ENABLED" : "DISABLED");
+            ImGui::Text("Lights: %s", g_ActivateLighting == 1 ? "ENABLED" : "DISABLED");
+            ImGui::Text("Exposure: %.1f", g_HDRExposure);
             ImGui::End();
         }
 
@@ -481,11 +442,11 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
 
         glPolygonMode(GL_FRONT_AND_BACK, g_DrawMode);
     }
-    else if (key == GLFW_KEY_F && action == GLFW_PRESS) // To enable/disable normal and parallax mapping.
+    else if (key == GLFW_KEY_F && action == GLFW_PRESS) // To activate/deactivate lights.
     {
-        g_EnableNPMapping = g_EnableNPMapping == 0 ? 1 : 0;
+        g_ActivateLighting = g_ActivateLighting == 0 ? 1 : 0;
     }
-    else if ((key == GLFW_KEY_N || key == GLFW_KEY_M ) && action == GLFW_PRESS) // To increase/decrease camera speed.
+    else if ((key == GLFW_KEY_N || key == GLFW_KEY_M) && action == GLFW_PRESS) // To increase/decrease camera speed.
     {
         if (key == GLFW_KEY_N)
         {
@@ -494,6 +455,17 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
         else // Implies "key == GLFW_KEY_M".
         {
             g_CameraSpeed = std::max(g_CameraSpeed - 2.5f, 2.5f);
+        }
+    }
+    else if ((key == GLFW_KEY_Z || key == GLFW_KEY_X) && action == GLFW_PRESS) // To increase/decrease exposure.
+    {
+        if (key == GLFW_KEY_Z)
+        {
+            g_HDRExposure = std::min(g_HDRExposure + 0.1f, 5.0f);
+        }
+        else // Implies "key == GLFW_KEY_X".
+        {
+            g_HDRExposure = std::max(g_HDRExposure - 0.1f, 0.1f);
         }
     }
 }

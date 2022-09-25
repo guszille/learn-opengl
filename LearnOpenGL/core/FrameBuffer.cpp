@@ -1,6 +1,6 @@
 #include "FrameBuffer.h"
 
-FrameBuffer::FrameBuffer(int width, int height, int colorAttachmentNumber, const BufferType& depthAndStencilBufferType, int samples)
+FrameBuffer::FrameBuffer(int width, int height, int colorAttachmentNumber, int colorInternalFormat, const BufferType& depthAndStencilBufferType, int samples)
 	: m_ID(), m_ColorBuffer(), m_DepthAndStencilBuffer(), m_DepthAndStencilBufferType(depthAndStencilBufferType)
 {
 	glGenFramebuffers(1, &m_ID);
@@ -14,7 +14,7 @@ FrameBuffer::FrameBuffer(int width, int height, int colorAttachmentNumber, const
 	// from one framebuffer to the other while also resolving any multisampled buffers.
 
 	// Creating color buffer.
-	attachTextureAsColorBuffer(width, height, colorAttachmentNumber, samples);
+	attachTextureAsColorBuffer(width, height, colorAttachmentNumber, colorInternalFormat, samples);
 
 	// Creating depth/stencil buffer.
 	if (depthAndStencilBufferType == BufferType::TEXTURE)
@@ -80,15 +80,22 @@ void FrameBuffer::bindColorBuffer(int unit)
 	}
 }
 
-void FrameBuffer::attachTextureAsColorBuffer(int width, int height, int attachmentNumber, int samples)
+void FrameBuffer::attachTextureAsColorBuffer(int width, int height, int attachmentNumber, int internalFormat, int samples)
 {
 	glGenTextures(1, &m_ColorBuffer);
 
 	if (samples == 1)
 	{
+		int format = GL_RGBA; // The default value is GL_RGBA.
+
+		if (internalFormat == GL_RGB || internalFormat == GL_RGB16F || internalFormat == GL_RGB32F)
+		{
+			format = GL_RGB;
+		}
+
 		glBindTexture(GL_TEXTURE_2D, m_ColorBuffer);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, nullptr);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -101,7 +108,7 @@ void FrameBuffer::attachTextureAsColorBuffer(int width, int height, int attachme
 	{
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_ColorBuffer);
 
-		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, GL_RGB, width, height, GL_TRUE);
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, internalFormat, width, height, GL_TRUE);
 
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
