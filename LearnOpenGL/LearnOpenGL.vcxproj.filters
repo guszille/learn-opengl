@@ -152,5 +152,11 @@
     <None Include="scripts\16_advanced_bplm_vs.glsl" />
     <None Include="scripts\16_advanced_bplm_fs.glsl" />
     <None Include="scripts\10_model_loading_vs.glsl" />
+    <None Include="scripts\17_ds_geometry_pass_vs.glsl" />
+    <None Include="scripts\17_ds_geometry_pass_fs.glsl" />
+    <None Include="scripts\17_ds_lighting_pass_vs.glsl" />
+    <None Include="scripts\17_ds_lighting_pass_fs.glsl" />
+    <None Include="scripts\17_forward_rendering_vs.glsl" />
+    <None Include="scripts\17_forward_rendering_fs.glsl" />
   </ItemGroup>
 </Project>

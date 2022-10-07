@@ -48,17 +48,23 @@ void processInput(GLFWwindow* window);
 float g_DeltaTime   = 0.0f;
 float g_LastFrame   = 0.0f;
 float g_CameraSpeed = 7.5f;
-float g_HDRExposure = 1.0f;
 
 int g_CursorMode       = GLFW_CURSOR_DISABLED;
 int g_DrawMode         = GL_FILL;
 int g_ActivateLighting = 1;
 
-glm::mat4      g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 1000.0f);
+// DEBUG variables.
+bool g_DebugMode = false;
+
+// Feature variables.
+glm::mat4      g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
 Camera*        g_MainCamera;
 
-ShaderProgram* g_BPLightingSP;
-ShaderProgram* g_ScreenSP;
+ShaderProgram* g_DeferredGPassSP;
+ShaderProgram* g_DeferredLPassSP;
+ShaderProgram* g_ForwardRenderingSP;
+
+ShaderProgram* g_RenderQuadSP;
 
 VertexArray*   g_QuadVAO;
 VertexBuffer*  g_QuadVBO;
@@ -66,9 +72,16 @@ VertexBuffer*  g_QuadVBO;
 VertexArray*   g_CubeVAO;
 VertexBuffer*  g_CubeVBO;
 
-FrameBuffer*   g_ScreenFB;
+FrameBuffer*   g_GBufferFB;
 
-Texture*       g_WoodenSurfaceTex;
+Texture*       g_ContainerTex;
+Texture*       g_ContainerSpecMap;
+
+std::vector<glm::vec3> g_ObjectPositions;
+std::vector<glm::vec3> g_LightPositions;
+std::vector<glm::vec3> g_LightColors;
+
+const int g_NumberOfLights = 32;
 
 void setup()
 {
@@ -88,6 +101,7 @@ void setup()
          1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
         -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
         -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+
         // front face
         -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
          1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
@@ -95,6 +109,7 @@ void setup()
          1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
         -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
         -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+
         // left face
         -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
         -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
@@ -102,6 +117,7 @@ void setup()
         -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
         -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
         -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+
         // right face
          1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
          1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
@@ -109,6 +125,7 @@ void setup()
          1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
          1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
          1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left
+
          // bottom face
         -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
          1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
@@ -116,19 +133,23 @@ void setup()
          1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
         -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
         -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+
         // top face
         -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
          1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
          1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right
          1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
         -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-        -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left   
+        -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left
     };
 
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         
-    g_BPLightingSP = new ShaderProgram("scripts/3_blinn_phong_lighting_model_vs.glsl", "scripts/4_bplm_fs_multiple_lc.glsl");
-    g_ScreenSP = new ShaderProgram("scripts/5_screen_quad_vs.glsl", "scripts/5_screen_quad_fs.glsl");
+    g_DeferredGPassSP = new ShaderProgram("scripts/17_ds_geometry_pass_vs.glsl", "scripts/17_ds_geometry_pass_fs.glsl");
+    g_DeferredLPassSP = new ShaderProgram("scripts/17_ds_lighting_pass_vs.glsl", "scripts/17_ds_lighting_pass_fs.glsl");
+    g_ForwardRenderingSP = new ShaderProgram("scripts/17_forward_rendering_vs.glsl", "scripts/17_forward_rendering_fs.glsl");
+
+    g_RenderQuadSP = new ShaderProgram("scripts/5_screen_quad_vs.glsl", "scripts/5_screen_quad_fs.glsl");
 
     g_QuadVAO = new VertexArray();
     g_QuadVBO = new VertexBuffer(quadVertices, sizeof(quadVertices));
@@ -155,14 +176,46 @@ void setup()
     g_CubeVAO->unbind(); // Unbind VAO before another buffer.
     g_CubeVBO->unbind();
 
-    g_ScreenFB = new FrameBuffer(g_WindowWidth, g_WindowHeight, 0, GL_RGBA16F);
+    g_GBufferFB = new FrameBuffer(g_WindowWidth, g_WindowHeight, 3, GL_RGBA16F);
 
-    g_WoodenSurfaceTex = new Texture("assets/textures/wooden_surface.png", true);
+    g_ContainerTex = new Texture("assets/textures/container.png", true);
+    g_ContainerSpecMap = new Texture("assets/textures/container_specular_map.png");
 
     // Bind framebuffers and textures at the end to prevent conflicts.
 
-    g_ScreenFB->bindColorBuffer(0);
-    g_WoodenSurfaceTex->bind(1);
+    g_GBufferFB->bindColorBuffer(0, 0);
+    g_GBufferFB->bindColorBuffer(1, 1);
+    g_GBufferFB->bindColorBuffer(2, 2);
+
+    g_ContainerTex->bind(3);
+    g_ContainerSpecMap->bind(4);
+
+    srand(13);
+
+    g_ObjectPositions.push_back(glm::vec3(-3.0f, -0.5f, -3.0f));
+    g_ObjectPositions.push_back(glm::vec3( 0.0f, -0.5f, -3.0f));
+    g_ObjectPositions.push_back(glm::vec3( 3.0f, -0.5f, -3.0f));
+    g_ObjectPositions.push_back(glm::vec3(-3.0f, -0.5f,  0.0f));
+    g_ObjectPositions.push_back(glm::vec3( 0.0f, -0.5f,  0.0f));
+    g_ObjectPositions.push_back(glm::vec3( 3.0f, -0.5f,  0.0f));
+    g_ObjectPositions.push_back(glm::vec3(-3.0f, -0.5f,  3.0f));
+    g_ObjectPositions.push_back(glm::vec3( 0.0f, -0.5f,  3.0f));
+    g_ObjectPositions.push_back(glm::vec3( 3.0f, -0.5f,  3.0f));
+
+    for (unsigned int i = 0; i < g_NumberOfLights; i++)
+    {
+        float xPos = static_cast<float>(((rand() % 100) / 100.0f) * 6.0f - 3.0f);
+        float yPos = static_cast<float>(((rand() % 100) / 100.0f) * 6.0f - 4.0f);
+        float zPos = static_cast<float>(((rand() % 100) / 100.0f) * 6.0f - 3.0f);
+
+        g_LightPositions.push_back(glm::vec3(xPos, yPos, zPos));
+
+        float rColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5f); // between 0.5 and 1.0
+        float gColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5f); // between 0.5 and 1.0
+        float bColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5f); // between 0.5 and 1.0
+
+        g_LightColors.push_back(glm::vec3(rColor, gColor, bColor));
+    }
 }
 
 /*
@@ -173,85 +226,123 @@ void setup()
  */
 void render()
 {
-    // Render scene into the custom framebuffer.
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    // 1. Geometry pass (DS): Render scene's geometry/color data into gBuffer.
     {
-        std::vector<glm::vec3> lightPositions;
-        std::vector<glm::vec3> lightColors;
-
-        lightPositions.push_back(glm::vec3( 0.0f,  0.0f, -48.5f));
-        lightPositions.push_back(glm::vec3(-1.4f, -1.8f,  -8.0f));
-        lightPositions.push_back(glm::vec3( 0.0f, -1.8f,  -6.0f));
-        lightPositions.push_back(glm::vec3( 1.4f, -1.8f,  -4.0f));
-
-        lightColors.push_back(glm::vec3(200.0f, 200.0f, 200.0f));
-        lightColors.push_back(glm::vec3(  1.5f,   0.0f,   0.0f));
-        lightColors.push_back(glm::vec3(  0.0f,   0.0f,   1.5f));
-        lightColors.push_back(glm::vec3(  0.0f,   1.5f,   0.0f));
-
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, 0.0f, -22.5f));
-        modelMatrix = glm::scale(modelMatrix, glm::vec3(2.5f, 2.5f, -27.5f));
-
-        g_ScreenFB->bind();
-        g_BPLightingSP->bind();
+        g_GBufferFB->bind();
+        g_DeferredGPassSP->bind();
         g_CubeVAO->bind();
 
-        g_BPLightingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-        g_BPLightingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
-        g_BPLightingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+        g_DeferredGPassSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+        g_DeferredGPassSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
 
-        g_BPLightingSP->setUniform1i("uInverseNormals", 1);
+        g_DeferredGPassSP->setUniform1i("uDiffuseMap", 3);
+        g_DeferredGPassSP->setUniform1i("uSpecularMap", 4);
 
-        for (unsigned int i = 0; i < 4; i++)
-        {
-            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].position").c_str(), lightPositions[i]);
-            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].ambient").c_str(), glm::vec3(0.0f, 0.0f, 0.0f));
-            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].diffuse").c_str(), lightColors[i]);
-            g_BPLightingSP->setUniform3f(("uPointLights[" + std::to_string(i) + "].specular").c_str(), glm::vec3(0.0f, 0.0f, 0.0f));
-            g_BPLightingSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].constant").c_str(), 1.0f);
-            g_BPLightingSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].linear").c_str(), 0.35f);
-            g_BPLightingSP->setUniform1f(("uPointLights[" + std::to_string(i) + "].quadratic").c_str(), 0.44f);
-        }
-
-        g_BPLightingSP->setUniform1i("uMaterial.diffuse", 1);
-        g_BPLightingSP->setUniform1i("uMaterial.specular", 1);
-        g_BPLightingSP->setUniform1f("uMaterial.shininess", 32.0f);
-
-        g_BPLightingSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
-
-        g_BPLightingSP->setUniform1i("uActivateDirectionalLight", 0);
-        g_BPLightingSP->setUniform1i("uActivatePointLights", g_ActivateLighting);
-        g_BPLightingSP->setUniform1i("uActivateSpotLight", 0);
-
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        for (unsigned int i = 0; i < g_ObjectPositions.size(); i++)
+        {
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, g_ObjectPositions[i]);
+
+            g_DeferredGPassSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
 
         g_CubeVAO->unbind();
-        g_BPLightingSP->unbind();
-        g_ScreenFB->unbind();
+        g_DeferredGPassSP->unbind();
+        g_GBufferFB->unbind();
     }
 
-    // Render on screen framebuffer.
+    // DEBUG.
+    if (g_DebugMode)
     {
-        g_ScreenSP->bind();
+        g_RenderQuadSP->bind();
         g_QuadVAO->bind();
 
-        g_ScreenSP->setUniform1i("uScreenTexture", 0);
-        g_ScreenSP->setUniform1i("uActiveEffect", 6); // HDR effect.
-        g_ScreenSP->setUniform1f("uExposure", g_HDRExposure);
+        g_RenderQuadSP->setUniform1i("uScreenTexture", 0); // Rendering position as texture.
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        g_QuadVAO->unbind();
+        g_RenderQuadSP->unbind();
+    
+        return;
+    }
+
+    // 2. Lighting pass (DS): Calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
+    {
+        g_DeferredLPassSP->bind();
+        g_QuadVAO->bind();
+
+        g_DeferredLPassSP->setUniform1i("gPosition", 0);
+        g_DeferredLPassSP->setUniform1i("gNormal", 1);
+        g_DeferredLPassSP->setUniform1i("gAlbedoAndSpecular", 2);
+
+        for (unsigned int i = 0; i < g_NumberOfLights; i++)
+        {
+            float constant  = 1.0f;
+            float linear    = 0.7f;
+            float quadratic = 1.8f;
+            float maximum   = std::fmaxf(std::fmaxf(g_LightColors[i].r, g_LightColors[i].g), g_LightColors[i].b);
+            float radius    = (-linear + std::sqrtf(linear * linear - 4 * quadratic * (constant - (256.0 / 5.0) * maximum))) / (2 * quadratic);
+
+            g_DeferredLPassSP->setUniform3f(("uLights[" + std::to_string(i) + "].position").c_str(), g_LightPositions[i]);
+            g_DeferredLPassSP->setUniform3f(("uLights[" + std::to_string(i) + "].color").c_str(), g_LightColors[i]);
+            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].constant").c_str(), constant);
+            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].linear").c_str(), linear);
+            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].quadratic").c_str(), quadratic);
+            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].radius").c_str(), radius);
+        }
+
+        g_DeferredLPassSP->setUniform1i("uActivateLighting", g_ActivateLighting);
+        g_DeferredLPassSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
-
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
         glDisable(GL_FRAMEBUFFER_SRGB);
 
-        g_ScreenSP->unbind();
         g_QuadVAO->unbind();
+        g_DeferredLPassSP->unbind();
+    }
+
+    // 3. Copy content of geometry's depth buffer to default framebuffer's depth buffer.
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, g_GBufferFB->getID());
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+        glBlitFramebuffer(0, 0, g_WindowWidth, g_WindowHeight, 0, 0, g_WindowWidth, g_WindowHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    // 4. Forward rendering: Render the lights on top of the scene.
+    {
+        g_ForwardRenderingSP->bind();
+        g_CubeVAO->bind();
+
+        g_ForwardRenderingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
+        g_ForwardRenderingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+
+        for (unsigned int i = 0; i < g_NumberOfLights; i++)
+        {
+            glm::mat4 modelMatrix = glm::mat4(1.0f);
+            modelMatrix = glm::translate(modelMatrix, g_LightPositions[i]);
+            modelMatrix = glm::scale(modelMatrix, glm::vec3(0.125f));
+
+            g_ForwardRenderingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+            g_ForwardRenderingSP->setUniform3f("uLightColor", g_LightColors[i]);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        g_CubeVAO->unbind();
+        g_ForwardRenderingSP->unbind();
     }
 
     // Draw ImGui interface/frame.
@@ -265,7 +356,6 @@ void render()
             ImGui::Begin("General");
             ImGui::Text("%.1f FPS", ImGui::GetIO().Framerate);
             ImGui::Text("Lights: %s", g_ActivateLighting == 1 ? "ENABLED" : "DISABLED");
-            ImGui::Text("Exposure: %.1f", g_HDRExposure);
             ImGui::End();
         }
 
@@ -338,7 +428,7 @@ int main()
 
     /* Enable OpenGL features */
     glEnable(GL_DEPTH_TEST);       // Enable depth test.
-    glEnable(GL_BLEND);            // Enable blending.
+    // glEnable(GL_BLEND);         // Enable blending.
     glEnable(GL_MULTISAMPLE);      // Enable multisampling.
     // (...)                       // Enable gamma correction only for the last vertex shader.
     // (...)                       // Enable face culling only for rendering closed shapes.
@@ -455,17 +545,6 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
         else // Implies "key == GLFW_KEY_M".
         {
             g_CameraSpeed = std::max(g_CameraSpeed - 2.5f, 2.5f);
-        }
-    }
-    else if ((key == GLFW_KEY_Z || key == GLFW_KEY_X) && action == GLFW_PRESS) // To increase/decrease exposure.
-    {
-        if (key == GLFW_KEY_Z)
-        {
-            g_HDRExposure = std::min(g_HDRExposure + 0.1f, 5.0f);
-        }
-        else // Implies "key == GLFW_KEY_X".
-        {
-            g_HDRExposure = std::max(g_HDRExposure - 0.1f, 0.1f);
         }
     }
 }

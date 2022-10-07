@@ -1,7 +1,7 @@
 #include "FrameBuffer.h"
 
-FrameBuffer::FrameBuffer(int width, int height, int colorAttachmentNumber, int colorInternalFormat, const BufferType& depthAndStencilBufferType, int samples)
-	: m_ID(), m_ColorBuffer(), m_DepthAndStencilBuffer(), m_DepthAndStencilBufferType(depthAndStencilBufferType)
+FrameBuffer::FrameBuffer(int width, int height, int numberOfColorBuffers, int colorInternalFormat, const BufferType& depthAndStencilBufferType, int samples)
+	: m_ID(), m_NumberOfColorBuffers(numberOfColorBuffers), m_ColorBuffers(), m_DepthAndStencilBuffer(), m_DepthAndStencilBufferType(depthAndStencilBufferType)
 {
 	glGenFramebuffers(1, &m_ID);
 	glBindFramebuffer(GL_FRAMEBUFFER, m_ID);
@@ -13,8 +13,32 @@ FrameBuffer::FrameBuffer(int width, int height, int colorAttachmentNumber, int c
 	// framebuffer is generally done through glBlitFramebuffer that copies a region
 	// from one framebuffer to the other while also resolving any multisampled buffers.
 
-	// Creating color buffer.
-	attachTextureAsColorBuffer(width, height, colorAttachmentNumber, colorInternalFormat, samples);
+	// Creating color buffers.
+	if (numberOfColorBuffers >= 1 && numberOfColorBuffers <= 32)
+	{
+		for (unsigned int i = 0; i < numberOfColorBuffers; i++)
+		{
+			attachTextureAsColorBuffer(width, height, i, colorInternalFormat, samples);
+		}
+
+		if (numberOfColorBuffers > 1)
+		{
+			unsigned int* attachments = new unsigned int[numberOfColorBuffers];
+
+			for (unsigned int i = 0; i < numberOfColorBuffers; i++)
+			{
+				attachments[i] = GL_COLOR_ATTACHMENT0 + i;
+			}
+
+			glDrawBuffers(numberOfColorBuffers, attachments);
+
+			delete[] attachments;
+		}
+	}
+	else
+	{
+		std::cout << "[ERROR] FRAMEBUFFER: The number of color buffers must be between 1 and 32!" << std::endl;
+	}
 
 	// Creating depth/stencil buffer.
 	if (depthAndStencilBufferType == BufferType::TEXTURE)
@@ -45,7 +69,10 @@ FrameBuffer::~FrameBuffer()
 
 	// Delete color and deptch/stencil buffers too.
 	
-	glDeleteTextures(1, &m_ColorBuffer);
+	for (unsigned int i = 0; i < m_NumberOfColorBuffers; i++)
+	{
+		glDeleteTextures(1, &m_ColorBuffers[i]);
+	}
 
 	if (m_DepthAndStencilBufferType == BufferType::TEXTURE)
 	{
@@ -67,12 +94,12 @@ void FrameBuffer::unbind()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void FrameBuffer::bindColorBuffer(int unit)
+void FrameBuffer::bindColorBuffer(int unit, int attachmentNumber)
 {
 	if (unit >= 0 && unit <= 15)
 	{
 		glActiveTexture(GL_TEXTURE0 + unit);
-		glBindTexture(GL_TEXTURE_2D, m_ColorBuffer);
+		glBindTexture(GL_TEXTURE_2D, m_ColorBuffers[attachmentNumber]);
 	}
 	else
 	{
@@ -80,40 +107,51 @@ void FrameBuffer::bindColorBuffer(int unit)
 	}
 }
 
+unsigned int FrameBuffer::getID()
+{
+	return m_ID;
+}
+
 void FrameBuffer::attachTextureAsColorBuffer(int width, int height, int attachmentNumber, int internalFormat, int samples)
 {
-	glGenTextures(1, &m_ColorBuffer);
+	glGenTextures(1, &m_ColorBuffers[attachmentNumber]);
 
 	if (samples == 1)
 	{
 		int format = GL_RGBA; // The default value is GL_RGBA.
+		int type = GL_UNSIGNED_BYTE; // The default value is GL_UNSIGNED_BYTE.
 
 		if (internalFormat == GL_RGB || internalFormat == GL_RGB16F || internalFormat == GL_RGB32F)
 		{
 			format = GL_RGB;
 		}
 
-		glBindTexture(GL_TEXTURE_2D, m_ColorBuffer);
+		if (internalFormat == GL_RGB16F || internalFormat == GL_RGB32F || internalFormat == GL_RGBA16F || internalFormat == GL_RGBA32F)
+		{
+			type = GL_FLOAT;
+		}
 
-		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, nullptr);
+		glBindTexture(GL_TEXTURE_2D, m_ColorBuffers[attachmentNumber]);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, type, NULL);
 
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachmentNumber, GL_TEXTURE_2D, m_ColorBuffer, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Could be "GL_NEAREST".
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Could be "GL_NEAREST".
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachmentNumber, GL_TEXTURE_2D, m_ColorBuffers[attachmentNumber], 0);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 	else
 	{
-		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_ColorBuffer);
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_ColorBuffers[attachmentNumber]);
 
 		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, internalFormat, width, height, GL_TRUE);
 
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachmentNumber, GL_TEXTURE_2D_MULTISAMPLE, m_ColorBuffer, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + attachmentNumber, GL_TEXTURE_2D_MULTISAMPLE, m_ColorBuffers[attachmentNumber], 0);
 
 		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 	}
@@ -124,7 +162,7 @@ void FrameBuffer::attachTextureAsDepthAndStencilBuffer(int width, int height)
 	glGenTextures(1, &m_DepthAndStencilBuffer);
 	glBindTexture(GL_TEXTURE_2D, m_DepthAndStencilBuffer);
 	
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
 	
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, m_DepthAndStencilBuffer, 0);
 
