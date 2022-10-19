@@ -96,7 +96,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;freetype\freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
     </Link>
@@ -115,7 +115,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;freetype\freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
     </Link>
@@ -130,7 +130,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;freetype\freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
     </Link>
@@ -149,7 +149,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;GLFW\glfw3.lib;assimp\assimp.lib;freetype\freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>
       </AdditionalLibraryDirectories>
     </Link>
@@ -167,6 +167,7 @@
     <ClCompile Include="util\DepthMap.cpp" />
     <ClCompile Include="util\object\Mesh.cpp" />
     <ClCompile Include="util\object\Model.cpp" />
+    <ClCompile Include="util\TextRenderer.cpp" />
     <ClCompile Include="util\Texture.cpp" />
     <ClCompile Include="vendor\libs\glad\glad.c" />
     <ClCompile Include="vendor\libs\imgui\imgui.cpp" />
@@ -189,6 +190,7 @@
     <ClInclude Include="util\DepthMap.h" />
     <ClInclude Include="util\object\Mesh.h" />
     <ClInclude Include="util\object\Model.h" />
+    <ClInclude Include="util\TextRenderer.h" />
     <ClInclude Include="util\Texture.h" />
   </ItemGroup>
   <ItemGroup>
@@ -211,6 +213,8 @@
     <None Include="scripts\17_ds_lighting_pass_vs.glsl" />
     <None Include="scripts\17_forward_rendering_fs.glsl" />
     <None Include="scripts\17_forward_rendering_vs.glsl" />
+    <None Include="scripts\18_text_rendering_fs.glsl" />
+    <None Include="scripts\18_text_rendering_vs.glsl" />
     <None Include="scripts\1_basic_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_vs.glsl" />

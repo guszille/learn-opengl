@@ -25,6 +25,7 @@
 #include "util/Texture.h"
 #include "util/CubeMap.h"
 #include "util/DepthMap.h"
+#include "util/TextRenderer.h"
 
 #include "util/object/Model.h"
 
@@ -58,6 +59,7 @@ bool g_DebugMode = false;
 
 // Feature variables.
 glm::mat4      g_ProjectionMatrix = glm::perspective(glm::radians(g_FieldOfView), g_WindowAspectRatio, 0.1f, 100.0f);
+glm::mat4      g_UIProjectionMatrix = glm::ortho(0.0f, (float)g_WindowWidth, 0.0f, (float)g_WindowHeight);
 Camera*        g_MainCamera;
 
 ShaderProgram* g_DeferredGPassSP;
@@ -82,6 +84,9 @@ std::vector<glm::vec3> g_LightPositions;
 std::vector<glm::vec3> g_LightColors;
 
 const int g_NumberOfLights = 32;
+
+TextRenderer*  g_TextRenderer;
+ShaderProgram* g_TextRendererSP;
 
 void setup()
 {
@@ -216,6 +221,14 @@ void setup()
 
         g_LightColors.push_back(glm::vec3(rColor, gColor, bColor));
     }
+
+    g_TextRenderer = new TextRenderer("assets/fonts/Roboto-Regular.ttf");
+
+    g_TextRendererSP = new ShaderProgram("scripts/18_text_rendering_vs.glsl", "scripts/18_text_rendering_fs.glsl");
+
+    g_TextRendererSP->bind();
+    g_TextRendererSP->setUniformMatrix4fv("uProjectionMatrix", g_UIProjectionMatrix);
+    g_TextRendererSP->unbind();
 }
 
 /*
@@ -343,6 +356,11 @@ void render()
 
         g_CubeVAO->unbind();
         g_ForwardRenderingSP->unbind();
+    }
+
+    // Text rendering.
+    {
+        g_TextRenderer->write(*g_TextRendererSP, "(C) LearnOpenGL.com", 980.0f, 680.0f, 0.5f, glm::vec3(0.3, 0.75f, 0.8f));
     }
 
     // Draw ImGui interface/frame.
