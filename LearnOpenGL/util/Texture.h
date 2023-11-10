@@ -14,6 +14,7 @@ class Texture
 {
 public:
 	Texture(const char* filepath, const bool gammaCorrection = false);
+	Texture(int width, int height, int internalFormat, int format, int type, const float* data);
 	~Texture();
 
 	void bind(int unit);

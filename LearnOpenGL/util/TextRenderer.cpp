@@ -88,7 +88,7 @@ void TextRenderer::write(ShaderProgram& shaderProgram, std::string text, float x
     shaderProgram.setUniform3f("uTextColor", color);
 
     glBindVertexArray(m_VAO);
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0 + 15);
 
     std::string::const_iterator ci;
 

@@ -8,6 +8,8 @@ uniform mat4 uModelMatrix;
 uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 
+uniform bool uInversedNormals = false;
+
 out vec3 ioFragPos;
 out vec2 ioTexCoords;
 out vec3 ioNormal;
@@ -15,12 +17,12 @@ out vec3 ioNormal;
 void main()
 {
     vec4 wPos = uModelMatrix * vec4(aPos, 1.0); // World position.
-    mat3 normalMatrix = transpose(inverse(mat3(uModelMatrix)));
+    vec4 vPos = uViewMatrix * wPos; // View position.
+    mat3 normalMatrix = transpose(inverse(mat3(uViewMatrix * uModelMatrix)));
 
-    ioFragPos = wPos.xyz;
+    ioFragPos = vPos.xyz;
     ioTexCoords = aTexCoords;
-    
-    ioNormal = normalMatrix * aNormal;
+    ioNormal = normalMatrix * (uInversedNormals ? -aNormal : aNormal);
 
-    gl_Position = uProjectionMatrix * uViewMatrix * wPos;
+    gl_Position = uProjectionMatrix * vPos;
 }

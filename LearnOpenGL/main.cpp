@@ -1,7 +1,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 
-#include <iostream>
 #include <string>
+#include <random>
+#include <iostream>
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -63,10 +64,14 @@ glm::mat4      g_UIProjectionMatrix = glm::ortho(0.0f, (float)g_WindowWidth, 0.0
 Camera*        g_MainCamera;
 
 ShaderProgram* g_DeferredGPassSP;
+ShaderProgram* g_SSAOPassSP;
+ShaderProgram* g_SSAOBlurPassSP;
 ShaderProgram* g_DeferredLPassSP;
 ShaderProgram* g_ForwardRenderingSP;
 
 ShaderProgram* g_RenderQuadSP;
+
+ShaderProgram* g_TextRendererSP;
 
 VertexArray*   g_QuadVAO;
 VertexBuffer*  g_QuadVBO;
@@ -75,18 +80,25 @@ VertexArray*   g_CubeVAO;
 VertexBuffer*  g_CubeVBO;
 
 FrameBuffer*   g_GBufferFB;
+FrameBuffer*   g_SSAOFB;
+FrameBuffer*   g_SSAOBlurFB;
 
 Texture*       g_ContainerTex;
 Texture*       g_ContainerSpecMap;
-
-std::vector<glm::vec3> g_ObjectPositions;
-std::vector<glm::vec3> g_LightPositions;
-std::vector<glm::vec3> g_LightColors;
-
-const int g_NumberOfLights = 32;
+Texture*       g_SSAONoiseTex;
 
 TextRenderer*  g_TextRenderer;
-ShaderProgram* g_TextRendererSP;
+
+std::vector<glm::vec3> g_SSAOKernel;
+std::vector<glm::vec3> g_SSAONoise;
+
+glm::vec3 g_LightPosition = glm::vec3(2.0f, 4.0f, 2.0f);
+glm::vec3 g_LightColor = glm::vec3(0.25f, 0.25f, 0.75f);
+
+float simpleLerp(float a, float b, float f)
+{
+    return a + f * (b - a);
+}
 
 void setup()
 {
@@ -148,13 +160,42 @@ void setup()
         -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left
     };
 
+    std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f); // Generates random floats between 0.0 and 1.0.
+    std::default_random_engine generator;
+
+    for (unsigned int i = 0; i < 64; i++)
+    {
+        glm::vec3 sample(randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator));
+        float scale = float(i) / 64.0f;
+
+        // Scale samples s.t. they're more aligned to center of kernel.
+        scale = simpleLerp(0.1f, 1.0f, scale * scale);
+
+        sample = glm::normalize(sample);
+        sample *= randomFloats(generator);
+        sample *= scale;
+
+        g_SSAOKernel.push_back(sample);
+    }
+
+    for (unsigned int i = 0; i < 16; i++)
+    {
+        glm::vec3 noise(randomFloats(generator) * 2.0f - 1.0f, randomFloats(generator) * 2.0f - 1.0f, 0.0f); // Rotate around z-axis (in tangent space).
+
+        g_SSAONoise.push_back(noise);
+    }
+
     g_MainCamera = new Camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
         
     g_DeferredGPassSP = new ShaderProgram("scripts/17_ds_geometry_pass_vs.glsl", "scripts/17_ds_geometry_pass_fs.glsl");
+    g_SSAOPassSP = new ShaderProgram("scripts/19_ssao_pass_vs.glsl", "scripts/19_ssao_pass_fs.glsl");
+    g_SSAOBlurPassSP = new ShaderProgram("scripts/19_ssao_pass_vs.glsl", "scripts/19_ssao_blur_pass_fs.glsl");
     g_DeferredLPassSP = new ShaderProgram("scripts/17_ds_lighting_pass_vs.glsl", "scripts/17_ds_lighting_pass_fs.glsl");
     g_ForwardRenderingSP = new ShaderProgram("scripts/17_forward_rendering_vs.glsl", "scripts/17_forward_rendering_fs.glsl");
 
     g_RenderQuadSP = new ShaderProgram("scripts/5_screen_quad_vs.glsl", "scripts/5_screen_quad_fs.glsl");
+
+    g_TextRendererSP = new ShaderProgram("scripts/18_text_rendering_vs.glsl", "scripts/18_text_rendering_fs.glsl");
 
     g_QuadVAO = new VertexArray();
     g_QuadVBO = new VertexBuffer(quadVertices, sizeof(quadVertices));
@@ -181,10 +222,21 @@ void setup()
     g_CubeVAO->unbind(); // Unbind VAO before another buffer.
     g_CubeVBO->unbind();
 
-    g_GBufferFB = new FrameBuffer(g_WindowWidth, g_WindowHeight, 3, GL_RGBA16F);
+    std::vector<ColorBufferConfig> gBufferConfigs = { { GL_RGBA16F, GL_NEAREST, GL_CLAMP_TO_EDGE }, { GL_RGBA16F, GL_NEAREST, GL_CLAMP_TO_EDGE }, { GL_RGBA, GL_NEAREST, GL_CLAMP_TO_EDGE } };
+
+    g_GBufferFB = new FrameBuffer(g_WindowWidth, g_WindowHeight, gBufferConfigs);
+    g_SSAOFB = new FrameBuffer(g_WindowWidth, g_WindowHeight, 1, GL_RED, GL_NEAREST, GL_CLAMP_TO_EDGE, FrameBuffer::BufferType::NONE);
+    g_SSAOBlurFB = new FrameBuffer(g_WindowWidth, g_WindowHeight, 1, GL_RED, GL_NEAREST, GL_CLAMP_TO_EDGE, FrameBuffer::BufferType::NONE);
 
     g_ContainerTex = new Texture("assets/textures/container.png", true);
     g_ContainerSpecMap = new Texture("assets/textures/container_specular_map.png");
+    g_SSAONoiseTex = new Texture(4, 4, GL_RGBA32F, GL_RGB, GL_FLOAT, glm::value_ptr(g_SSAONoise[0]));
+
+    g_TextRenderer = new TextRenderer("assets/fonts/Roboto-Regular.ttf");
+
+    g_TextRendererSP->bind();
+    g_TextRendererSP->setUniformMatrix4fv("uProjectionMatrix", g_UIProjectionMatrix);
+    g_TextRendererSP->unbind();
 
     // Bind framebuffers and textures at the end to prevent conflicts.
 
@@ -192,43 +244,13 @@ void setup()
     g_GBufferFB->bindColorBuffer(1, 1);
     g_GBufferFB->bindColorBuffer(2, 2);
 
-    g_ContainerTex->bind(3);
-    g_ContainerSpecMap->bind(4);
+    g_SSAOFB->bindColorBuffer(3, 0);
+    g_SSAOBlurFB->bindColorBuffer(4, 0);
 
-    srand(13);
+    g_ContainerTex->bind(5);
+    g_ContainerSpecMap->bind(6);
 
-    g_ObjectPositions.push_back(glm::vec3(-3.0f, -0.5f, -3.0f));
-    g_ObjectPositions.push_back(glm::vec3( 0.0f, -0.5f, -3.0f));
-    g_ObjectPositions.push_back(glm::vec3( 3.0f, -0.5f, -3.0f));
-    g_ObjectPositions.push_back(glm::vec3(-3.0f, -0.5f,  0.0f));
-    g_ObjectPositions.push_back(glm::vec3( 0.0f, -0.5f,  0.0f));
-    g_ObjectPositions.push_back(glm::vec3( 3.0f, -0.5f,  0.0f));
-    g_ObjectPositions.push_back(glm::vec3(-3.0f, -0.5f,  3.0f));
-    g_ObjectPositions.push_back(glm::vec3( 0.0f, -0.5f,  3.0f));
-    g_ObjectPositions.push_back(glm::vec3( 3.0f, -0.5f,  3.0f));
-
-    for (unsigned int i = 0; i < g_NumberOfLights; i++)
-    {
-        float xPos = static_cast<float>(((rand() % 100) / 100.0f) * 6.0f - 3.0f);
-        float yPos = static_cast<float>(((rand() % 100) / 100.0f) * 6.0f - 4.0f);
-        float zPos = static_cast<float>(((rand() % 100) / 100.0f) * 6.0f - 3.0f);
-
-        g_LightPositions.push_back(glm::vec3(xPos, yPos, zPos));
-
-        float rColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5f); // between 0.5 and 1.0
-        float gColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5f); // between 0.5 and 1.0
-        float bColor = static_cast<float>(((rand() % 100) / 200.0f) + 0.5f); // between 0.5 and 1.0
-
-        g_LightColors.push_back(glm::vec3(rColor, gColor, bColor));
-    }
-
-    g_TextRenderer = new TextRenderer("assets/fonts/Roboto-Regular.ttf");
-
-    g_TextRendererSP = new ShaderProgram("scripts/18_text_rendering_vs.glsl", "scripts/18_text_rendering_fs.glsl");
-
-    g_TextRendererSP->bind();
-    g_TextRendererSP->setUniformMatrix4fv("uProjectionMatrix", g_UIProjectionMatrix);
-    g_TextRendererSP->unbind();
+    g_SSAONoiseTex->bind(7);
 }
 
 /*
@@ -249,25 +271,74 @@ void render()
 
         g_DeferredGPassSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
         g_DeferredGPassSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
-
-        g_DeferredGPassSP->setUniform1i("uDiffuseMap", 3);
-        g_DeferredGPassSP->setUniform1i("uSpecularMap", 4);
+        g_DeferredGPassSP->setUniform1i("uDiffuseMap", 5);
+        g_DeferredGPassSP->setUniform1i("uSpecularMap", 6);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        for (unsigned int i = 0; i < g_ObjectPositions.size(); i++)
-        {
-            glm::mat4 modelMatrix = glm::mat4(1.0f);
-            modelMatrix = glm::translate(modelMatrix, g_ObjectPositions[i]);
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-            g_DeferredGPassSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+        // 1.1. Draw the container.
+        modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, glm::vec3(0.0f, -6.5f, 0.0f));
 
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        g_DeferredGPassSP->setUniform1i("uInversedNormals", 0);
+        g_DeferredGPassSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // 1.2. Draw the room.
+        modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(7.5f, 7.5f, 7.5f));
+
+        g_DeferredGPassSP->setUniform1i("uInversedNormals", 1);
+        g_DeferredGPassSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         g_CubeVAO->unbind();
         g_DeferredGPassSP->unbind();
         g_GBufferFB->unbind();
+    }
+
+    // 2. SSAO (DS): Generate the occlusion map.
+    {
+        g_SSAOFB->bind();
+        g_SSAOPassSP->bind();
+        g_QuadVAO->bind();
+
+        g_SSAOPassSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+        g_SSAOPassSP->setUniform1i("gPosition", 0);
+        g_SSAOPassSP->setUniform1i("gNormal", 1);
+        g_SSAOPassSP->setUniform1i("uTexNoise", 7);
+
+        for (unsigned int i = 0; i < 64; i++)
+        {
+            g_SSAOPassSP->setUniform3f(("uSamples[" + std::to_string(i) + "]").c_str(), g_SSAOKernel[i]);
+        }
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        g_QuadVAO->unbind();
+        g_SSAOPassSP->unbind();
+        g_SSAOFB->unbind();
+    }
+
+    // 3. SSAO Blur (DS): Blur the SSAO texture to remove noise.
+    {
+        g_SSAOBlurFB->bind();
+        g_SSAOBlurPassSP->bind();
+        g_QuadVAO->bind();
+
+        g_SSAOBlurPassSP->setUniform1i("uSSAORaw", 3);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        g_QuadVAO->unbind();
+        g_SSAOBlurPassSP->unbind();
+        g_SSAOBlurFB->unbind();
     }
 
     // DEBUG.
@@ -276,18 +347,18 @@ void render()
         g_RenderQuadSP->bind();
         g_QuadVAO->bind();
 
-        g_RenderQuadSP->setUniform1i("uScreenTexture", 0); // Rendering position as texture.
+        g_RenderQuadSP->setUniform1i("uScreenTexture", 4);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         g_QuadVAO->unbind();
         g_RenderQuadSP->unbind();
-    
+
         return;
     }
 
-    // 2. Lighting pass (DS): Calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
+    // 4. Lighting pass (DS): Calculate lighting by iterating over a screen filled quad pixel-by-pixel using the gbuffer's content.
     {
         g_DeferredLPassSP->bind();
         g_QuadVAO->bind();
@@ -295,29 +366,32 @@ void render()
         g_DeferredLPassSP->setUniform1i("gPosition", 0);
         g_DeferredLPassSP->setUniform1i("gNormal", 1);
         g_DeferredLPassSP->setUniform1i("gAlbedoAndSpecular", 2);
+        g_DeferredLPassSP->setUniform1i("uSSAO", 4);
 
-        for (unsigned int i = 0; i < g_NumberOfLights; i++)
+        // Setup light informations.
         {
             float constant  = 1.0f;
-            float linear    = 0.7f;
-            float quadratic = 1.8f;
-            float maximum   = std::fmaxf(std::fmaxf(g_LightColors[i].r, g_LightColors[i].g), g_LightColors[i].b);
+            float linear    = 0.09f;
+            float quadratic = 0.032f;
+            float maximum   = std::fmaxf(std::fmaxf(g_LightColor.r, g_LightColor.g), g_LightColor.b);
             float radius    = (-linear + std::sqrtf(linear * linear - 4 * quadratic * (constant - (256.0 / 5.0) * maximum))) / (2 * quadratic);
 
-            g_DeferredLPassSP->setUniform3f(("uLights[" + std::to_string(i) + "].position").c_str(), g_LightPositions[i]);
-            g_DeferredLPassSP->setUniform3f(("uLights[" + std::to_string(i) + "].color").c_str(), g_LightColors[i]);
-            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].constant").c_str(), constant);
-            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].linear").c_str(), linear);
-            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].quadratic").c_str(), quadratic);
-            g_DeferredLPassSP->setUniform1f(("uLights[" + std::to_string(i) + "].radius").c_str(), radius);
+            glm::vec3 lightPosViewSpace = glm::vec3(g_MainCamera->getViewMatrix() * glm::vec4(g_LightPosition, 1.0f));
+
+            g_DeferredLPassSP->setUniform3f("uLights[0].position", lightPosViewSpace);
+            g_DeferredLPassSP->setUniform3f("uLights[0].color", g_LightColor);
+            g_DeferredLPassSP->setUniform1f("uLights[0].constant", constant);
+            g_DeferredLPassSP->setUniform1f("uLights[0].linear", linear);
+            g_DeferredLPassSP->setUniform1f("uLights[0].quadratic", quadratic);
+            g_DeferredLPassSP->setUniform1f("uLights[0].radius", radius);
         }
 
         g_DeferredLPassSP->setUniform1i("uActivateLighting", g_ActivateLighting);
+        g_DeferredLPassSP->setUniform1i("uProcessAllLightSources", 1);
         g_DeferredLPassSP->setUniform3f("uViewPos", g_MainCamera->getPosition());
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         glEnable(GL_FRAMEBUFFER_SRGB); // Enable gamma correction.
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glDisable(GL_FRAMEBUFFER_SRGB);
 
@@ -325,7 +399,7 @@ void render()
         g_DeferredLPassSP->unbind();
     }
 
-    // 3. Copy content of geometry's depth buffer to default framebuffer's depth buffer.
+    // 5. Copy content of geometry's depth buffer to default framebuffer's depth buffer.
     {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, g_GBufferFB->getID());
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -334,25 +408,21 @@ void render()
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    // 4. Forward rendering: Render the lights on top of the scene.
+    // 4. Forward rendering: Render the light on top of the scene.
     {
         g_ForwardRenderingSP->bind();
         g_CubeVAO->bind();
 
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        modelMatrix = glm::translate(modelMatrix, g_LightPosition);
+        modelMatrix = glm::scale(modelMatrix, glm::vec3(0.125f));
+
         g_ForwardRenderingSP->setUniformMatrix4fv("uViewMatrix", g_MainCamera->getViewMatrix());
         g_ForwardRenderingSP->setUniformMatrix4fv("uProjectionMatrix", g_ProjectionMatrix);
+        g_ForwardRenderingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
+        g_ForwardRenderingSP->setUniform3f("uLightColor", g_LightColor);
 
-        for (unsigned int i = 0; i < g_NumberOfLights; i++)
-        {
-            glm::mat4 modelMatrix = glm::mat4(1.0f);
-            modelMatrix = glm::translate(modelMatrix, g_LightPositions[i]);
-            modelMatrix = glm::scale(modelMatrix, glm::vec3(0.125f));
-
-            g_ForwardRenderingSP->setUniformMatrix4fv("uModelMatrix", modelMatrix);
-            g_ForwardRenderingSP->setUniform3f("uLightColor", g_LightColors[i]);
-
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         g_CubeVAO->unbind();
         g_ForwardRenderingSP->unbind();
@@ -360,7 +430,7 @@ void render()
 
     // Text rendering.
     {
-        g_TextRenderer->write(*g_TextRendererSP, "(C) LearnOpenGL.com", 980.0f, 680.0f, 0.5f, glm::vec3(0.3, 0.75f, 0.8f));
+        g_TextRenderer->write(*g_TextRendererSP, "(C) LearnOpenGL.com", 32.0f, 32.0f, 0.35f, glm::vec3(0.3, 0.75f, 0.8f));
     }
 
     // Draw ImGui interface/frame.
@@ -553,6 +623,10 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
     else if (key == GLFW_KEY_F && action == GLFW_PRESS) // To activate/deactivate lights.
     {
         g_ActivateLighting = g_ActivateLighting == 0 ? 1 : 0;
+    }
+    else if (key == GLFW_KEY_G && action == GLFW_PRESS) // To show/hide the occlusion map.
+    {
+        g_DebugMode = !g_DebugMode;
     }
     else if ((key == GLFW_KEY_N || key == GLFW_KEY_M) && action == GLFW_PRESS) // To increase/decrease camera speed.
     {

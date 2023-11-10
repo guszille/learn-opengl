@@ -1,6 +1,6 @@
 #version 330 core
 
-#define N_POINT_LIGHTS 32
+#define N_POINT_LIGHTS 1
 
 struct Light // Represents a point light type.
 {
@@ -19,23 +19,24 @@ in vec2 ioTexCoords;
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedoAndSpecular;
+uniform sampler2D uSSAO;
 
 uniform Light uLights[N_POINT_LIGHTS];
 uniform bool uActivateLighting = true;
+uniform bool uProcessAllLightSources = true;
 uniform vec3 uViewPos;
 
 out vec4 FragColor;
 
-vec3 calcPointLight(Light lightSource, vec3 fragPos, vec3 fragNormal, vec3 fragDiffuseComp, float fragSpecularComp)
+vec3 calcPointLight(Light lightSource, float lightDis, vec3 fragPos, vec3 fragNormal, vec3 fragDiffuseComp, float fragSpecularComp)
 {
     vec3 lightDir = normalize(lightSource.position - fragPos);
     vec3 viewDir = normalize(uViewPos - fragPos);
     vec3 halfwayDir = normalize(lightDir + viewDir);
 
     float diffuseStr = max(dot(fragNormal, lightDir), 0.0);
-    float specularStr = 0.5 * pow(max(dot(fragNormal, halfwayDir), 0.0), 16.0);
-    float distance = length(lightSource.position - fragPos);
-    float attenuation = 1.0 / (lightSource.constant + lightSource.linear * distance + lightSource.quadratic * (distance * distance));
+    float specularStr = pow(max(dot(fragNormal, halfwayDir), 0.0), 8.0);
+    float attenuation = 1.0 / (lightSource.constant + lightSource.linear * lightDis + lightSource.quadratic * (lightDis * lightDis));
 
     // Calculating the rest of the "Blinn-Phong Lighting" components.
 
@@ -55,7 +56,7 @@ void main()
     vec3 fragPos = texture(gPosition, ioTexCoords).rgb;
     vec3 fragNormal = texture(gNormal, ioTexCoords).rgb;
     vec4 fragDiffuseAndSpecular = texture(gAlbedoAndSpecular, ioTexCoords).rgba;
-    vec3 ambientComp = 0.1 * fragDiffuseAndSpecular.rgb; // Hard-coded ambient component.
+    vec3 ambientComp = vec3(0.3 * fragDiffuseAndSpecular.rgb * texture(uSSAO, ioTexCoords).r);
 
     pixelColor += ambientComp;
 
@@ -65,9 +66,9 @@ void main()
         {
             float distance = length(uLights[i].position - fragPos);
 
-            if(distance < uLights[i].radius)
+            if(uProcessAllLightSources || distance < uLights[i].radius)
             {
-                pixelColor += calcPointLight(uLights[i], fragPos, fragNormal, fragDiffuseAndSpecular.rgb, fragDiffuseAndSpecular.a);
+                pixelColor += calcPointLight(uLights[i], distance, fragPos, fragNormal, fragDiffuseAndSpecular.rgb, fragDiffuseAndSpecular.a);
             }
         }
     }

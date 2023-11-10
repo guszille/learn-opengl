@@ -215,6 +215,9 @@
     <None Include="scripts\17_forward_rendering_vs.glsl" />
     <None Include="scripts\18_text_rendering_fs.glsl" />
     <None Include="scripts\18_text_rendering_vs.glsl" />
+    <None Include="scripts\19_ssao_blur_pass_fs.glsl" />
+    <None Include="scripts\19_ssao_pass_fs.glsl" />
+    <None Include="scripts\19_ssao_pass_vs.glsl" />
     <None Include="scripts\1_basic_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_fs.glsl" />
     <None Include="scripts\3_blinn_phong_lighting_model_vs.glsl" />
